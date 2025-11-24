@@ -10,10 +10,12 @@ class CityModel(Model):
 
     Args:
         N: Number of agents in the simulation
+        width: Width of the map (not used, kept for compatibility)
+        height: Height of the map (not used, kept for compatibility)
         seed: Random seed for the model
     """
 
-    def __init__(self, N, seed=42):
+    def __init__(self, N, width=None, height=None, seed=42):
 
         super().__init__(seed=seed)
 

@@ -25,30 +25,59 @@ function parseFace(parts, objData, arrays) {
     // Each vertex is an array with its vertex, texture and normal indices
     let faceVerts = parts.slice(1).map(face => face.split('/'));
     faceVerts.forEach(vert => {
-        const vertex = vert != '' ? Number(vert) : undefined
-        if (vertex != undefined) {
-            // console.log(objData.vertices[vert[0]])
-
-            // First element is the vertex index
-            arrays.a_position.data.push(...objData.vertices[vert[0]]);
-            // Second element is the texture index
-            if (vert.length > 1 && vert[1] != "") {
-                arrays.a_texCoord.data.push(...objData.textures[vert[1]]);
-            }
-            // Third element is the normal index
-            if (vert.length > 2 && vert[2] != "") {
-                arrays.a_normal.data.push(...objData.normals[vert[2]]);
-            }
-
-            if (materialInUse) {
-                arrays.a_color.data.push(...materialInUse['Kd'], 1);
-            } else {
-                // Force a color for each vertex
-                arrays.a_color.data.push(0.4, 0.4, 0.4, 1);
-            }
-            // This is not really necessary, but just in case
-            objData.faces.push({v: vert[0], t: vert[1], n: vert[2]});
+        // Skip empty vertices
+        if (!vert || vert.length === 0 || vert[0] === '') {
+            return;
         }
+
+        const vertexIndex = Number(vert[0]);
+        
+        // Validate vertex index
+        if (!vertexIndex || !objData.vertices[vertexIndex]) {
+            console.warn(`Invalid vertex index: ${vert[0]}`);
+            return;
+        }
+
+        // First element is the vertex index
+        arrays.a_position.data.push(...objData.vertices[vertexIndex]);
+        
+        // Second element is the texture index
+        if (vert.length > 1 && vert[1] != "") {
+            const texIndex = Number(vert[1]);
+            if (objData.textures[texIndex]) {
+                arrays.a_texCoord.data.push(...objData.textures[texIndex]);
+            } else {
+                // Default texture coords if not available
+                arrays.a_texCoord.data.push(0, 0);
+            }
+        } else {
+            // Default texture coords
+            arrays.a_texCoord.data.push(0, 0);
+        }
+        
+        // Third element is the normal index
+        if (vert.length > 2 && vert[2] != "") {
+            const normalIndex = Number(vert[2]);
+            if (objData.normals[normalIndex]) {
+                arrays.a_normal.data.push(...objData.normals[normalIndex]);
+            } else {
+                // Default normal if not available
+                arrays.a_normal.data.push(0, 1, 0);
+            }
+        } else {
+            // Default normal
+            arrays.a_normal.data.push(0, 1, 0);
+        }
+
+        if (materialInUse && materialInUse['Kd']) {
+            arrays.a_color.data.push(...materialInUse['Kd'], 1);
+        } else {
+            // Force a color for each vertex
+            arrays.a_color.data.push(0.4, 0.4, 0.4, 1);
+        }
+        
+        // This is not really necessary, but just in case
+        objData.faces.push({v: vert[0], t: vert[1], n: vert[2]});
     });
 }
 

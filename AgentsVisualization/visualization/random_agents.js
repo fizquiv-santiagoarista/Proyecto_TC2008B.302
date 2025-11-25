@@ -17,6 +17,9 @@ import { Scene3D } from '../libs/scene3d';
 import { Object3D } from '../libs/object3d';
 import { Camera3D } from '../libs/camera3d';
 
+// Model loader for OBJ files
+import { createModelObject } from '../libs/model_loader.js';
+
 // Functions and arrays for the communication with the API
 import {
   agents, obstacles, trafficLights, initAgentsModel,
@@ -78,7 +81,7 @@ async function main() {
   setupScene();
 
   // Position the objects in the scene
-  setupObjects(scene, gl, colorProgramInfo);
+  await setupObjects(scene, gl, colorProgramInfo);
 
   // Prepare the user interface
   setupUI();
@@ -103,7 +106,7 @@ function setupScene() {
   scene.camera.setupControls();
 }
 
-function setupObjects(scene, gl, programInfo) {
+async function setupObjects(scene, gl, programInfo) {
   // Create VAOs for the different shapes
   const baseCube = new Object3D(-1);
   baseCube.prepareVAO(gl, programInfo);
@@ -123,7 +126,7 @@ function setupObjects(scene, gl, programInfo) {
   scene.addObject(ground);
   */
 
-  // Copy the properties of the base objects
+  // AGENTS (Cars) - Using simple cubes
   for (const agent of agents) {
     agent.arrays = baseCube.arrays;
     agent.bufferInfo = baseCube.bufferInfo;
@@ -132,7 +135,71 @@ function setupObjects(scene, gl, programInfo) {
     scene.addObject(agent);
   }
 
-  // Copy the properties of the base objects
+  /* 
+  // ALTERNATIVE: Use 3D car models instead of cubes
+  // Uncomment this section and comment out the cube version above
+  const carModel = await createModelObject(
+    gl, 
+    programInfo,
+    'car-2024-301.obj',      // OBJ file in assets/models/
+    'car-2024-301.mtl'       // MTL file (optional)
+  );
+  
+  for (const agent of agents) {
+    agent.arrays = carModel.arrays;
+    agent.bufferInfo = carModel.bufferInfo;
+    agent.vao = carModel.vao;
+    agent.scale = { x: 0.3, y: 0.3, z: 0.3 };
+    scene.addObject(agent);
+  }
+  */
+
+  // OBSTACLES (Buildings) - Using 3D models
+  try {
+    console.log('Loading building models...');
+    // Load two different building models
+    const building1 = await createModelObject(
+      gl, 
+      programInfo,
+      'building_1.obj',
+      'building_1.mtl'
+    );
+    
+    const building2 = await createModelObject(
+      gl, 
+      programInfo,
+      'building_2.obj',
+      'building_2.mtl'
+    );
+
+    console.log('Building models loaded successfully!');
+
+    // Alternate between the two building models
+    for (let i = 0; i < obstacles.length; i++) {
+      const obstacle = obstacles[i];
+      const model = i % 2 === 0 ? building1 : building2;
+      
+      obstacle.arrays = model.arrays;
+      obstacle.bufferInfo = model.bufferInfo;
+      obstacle.vao = model.vao;
+      obstacle.scale = { x: 0.5, y: 1, z: 0.5 }; // Increased y (height) to make buildings taller
+      scene.addObject(obstacle);
+    }
+  } catch (error) {
+    console.error('Failed to load building models, falling back to cubes:', error);
+    // Fallback to cubes if models fail to load
+    for (const agent of obstacles) {
+      agent.arrays = baseCube.arrays;
+      agent.bufferInfo = baseCube.bufferInfo;
+      agent.vao = baseCube.vao;
+      agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
+      agent.color = [0.7, 0.7, 0.7, 1.0];
+      scene.addObject(agent);
+    }
+  }
+
+  /*
+  // ALTERNATIVE: Use simple cubes for obstacles
   for (const agent of obstacles) {
     agent.arrays = baseCube.arrays;
     agent.bufferInfo = baseCube.bufferInfo;
@@ -141,17 +208,73 @@ function setupObjects(scene, gl, programInfo) {
     agent.color = [0.7, 0.7, 0.7, 1.0];
     scene.addObject(agent);
   }
+  */
 
-  // Copy the properties of the base objects for traffic lights
+  // TRAFFIC LIGHTS - Using 3D traffic light model
+  try {
+    console.log('Loading traffic light model...');
+    const trafficLightModel = await createModelObject(
+      gl,
+      programInfo,
+      'trafficLight/trfcLight.obj',
+      'trafficLight/trfcLight.mtl'
+    );
+
+    console.log('Traffic light model loaded successfully!');
+
+    for (const light of trafficLights) {
+      light.arrays = trafficLightModel.arrays;
+      light.bufferInfo = trafficLightModel.bufferInfo;
+      light.vao = trafficLightModel.vao;
+      light.scale = { x: 0.5, y: 0.8, z: 0.5 };
+      // Adjust Y position to place traffic light on the ground
+      light.position.y = 1;  // Set to ground level
+      scene.addObject(light);
+    }
+  } catch (error) {
+    console.error('Failed to load traffic light model, falling back to colored cubes:', error);
+    // Fallback to flat shader cubes with dynamic colors
+    for (const light of trafficLights) {
+      light.arrays = flatCube.arrays;
+      light.bufferInfo = flatCube.bufferInfo;
+      light.vao = flatCube.vao;
+      light.scale = { x: 0.3, y: 1.2, z: 0.3 };
+      light.usesFlatShader = true;
+      scene.addObject(light);
+    }
+  }
+
+  /*
+  // ALTERNATIVE: Use simple colored cubes for dynamic traffic lights
   for (const light of trafficLights) {
     light.arrays = flatCube.arrays;
     light.bufferInfo = flatCube.bufferInfo;
     light.vao = flatCube.vao;
-    light.scale = { x: 0.5, y: 1.0, z: 0.5 }; // Taller to look like a traffic light
+    light.scale = { x: 0.3, y: 1.2, z: 0.3 }; // Taller to look like a traffic light
     light.usesFlatShader = true; // Flag to use flat shader with u_color uniform
     // Color is already set in getTrafficLights based on state
     scene.addObject(light);
   }
+  */
+
+  /*
+  // ALTERNATIVE: Use 3D stoplight models
+  // Note: Won't support dynamic color changes unless using custom shader
+  const stoplightModel = await createModelObject(
+    gl,
+    programInfo,
+    'stoplight_1.obj',
+    'stoplight_1.mtl'
+  );
+
+  for (const light of trafficLights) {
+    light.arrays = stoplightModel.arrays;
+    light.bufferInfo = stoplightModel.bufferInfo;
+    light.vao = stoplightModel.vao;
+    light.scale = { x: 0.3, y: 0.3, z: 0.3 };
+    scene.addObject(light);
+  }
+  */
 
 }
 

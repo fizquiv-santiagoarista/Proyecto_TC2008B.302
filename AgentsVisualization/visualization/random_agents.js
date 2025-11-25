@@ -23,7 +23,7 @@ import { createModelObject } from '../libs/model_loader.js';
 // Functions and arrays for the communication with the API
 import {
   agents, obstacles, trafficLights, initAgentsModel,
-  update, getAgents, getObstacles, getTrafficLights
+  update, getAgents, getObstacles, getTrafficLights, setNAgents, initData
 } from '../libs/api_connection.js';
 
 // Define the shader code, using GLSL 3.00
@@ -424,9 +424,19 @@ function setupViewProjection(gl) {
 
 // Setup a ui.
 function setupUI() {
-  /*
   const gui = new GUI();
 
+  // Settings for car spawning
+  const spawnFolder = gui.addFolder('Car Spawning:');
+  spawnFolder.add(initData, 'NAgents', 1, 10, 1)
+      .name('Cars per spawn (every 10 steps)')
+      .onChange((value) => {
+        setNAgents(value);
+        console.log('Cars per spawn set to:', value);
+      });
+  spawnFolder.open();
+
+  /*
   // Settings for the animation
   const animFolder = gui.addFolder('Animation:');
   animFolder.add( settings.rotationSpeed, 'x', 0, 360)

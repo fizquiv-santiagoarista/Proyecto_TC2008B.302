@@ -27,6 +27,7 @@ class CityModel(Model):
         self.traffic_lights = []
         self.destinations = []
         self.road_cells = []
+        self.obstacles = []
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("city_files/2022_base.txt") as baseFile:
@@ -49,13 +50,20 @@ class CityModel(Model):
                         self.road_cells.append(cell)
 
                     elif col in ["S", "s"]:
-                        agent = Traffic_Light(
+                        # Traffic lights need to also have a Road underneath
+                        # The direction doesn't matter much since cars use their last_direction when on a traffic light
+                        # Just use a default direction
+                        Road(self, cell, "Right")
+                        self.road_cells.append(cell)
+                        
+                        # Then create the traffic light on top
+                        traffic_light = Traffic_Light(
                             self,
                             cell,
-                            False if col == "S" else True,
+                            True,  # All traffic lights start green
                             int(dataDictionary[col]),
                         )
-                        self.traffic_lights.append(agent)
+                        self.traffic_lights.append(traffic_light)
 
                     elif col == "#":
                         agent = Obstacle(self, cell)
@@ -93,9 +101,12 @@ class CityModel(Model):
         
         # Spawn cars every spawn_interval steps
         if self.steps % self.spawn_interval == 0:
-            if self.corner_road_cells:
+            if self.corner_road_cells and self.destinations:
                 # Spawn the specified number of cars
                 for i in range(self.cars_per_spawn):
                     # Select a corner to spawn the car (cycle through corners)
                     starting_cell = self.corner_road_cells[i % len(self.corner_road_cells)]
-                    car = Car(self, starting_cell)
+                    
+                    # Assign a random destination to the car
+                    destination = self.random.choice(self.destinations)
+                    car = Car(self, starting_cell, destination)

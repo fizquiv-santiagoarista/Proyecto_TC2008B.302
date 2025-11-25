@@ -20,10 +20,15 @@ const trafficLights = [];
 
 // Define the data object
 const initData = {
-    NAgents: 20,
+    NAgents: 2,
     width: 28,
     height: 28
 };
+
+// Function to update NAgents value
+function setNAgents(value) {
+    initData.NAgents = value;
+}
 
 
 /* FUNCTIONS FOR THE INTERACTION WITH THE MESA SERVER */
@@ -209,4 +214,4 @@ async function update() {
     }
 }
 
-export { agents, obstacles, trafficLights, initAgentsModel, update, getAgents, getObstacles, getTrafficLights };
+export { agents, obstacles, trafficLights, initAgentsModel, update, getAgents, getObstacles, getTrafficLights, setNAgents, initData };

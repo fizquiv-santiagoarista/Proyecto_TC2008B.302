@@ -127,13 +127,24 @@ async function setupObjects(scene, gl, programInfo) {
   */
 
   // AGENTS (Cars) - Using simple cubes
+  const carTemplate = {
+    arrays: baseCube.arrays,
+    bufferInfo: baseCube.bufferInfo,
+    vao: baseCube.vao,
+    scale: { x: 0.5, y: 0.5, z: 0.5 }
+  };
+
   for (const agent of agents) {
-    agent.arrays = baseCube.arrays;
-    agent.bufferInfo = baseCube.bufferInfo;
-    agent.vao = baseCube.vao;
-    agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
+    agent.arrays = carTemplate.arrays;
+    agent.bufferInfo = carTemplate.bufferInfo;
+    agent.vao = carTemplate.vao;
+    agent.scale = { ...carTemplate.scale };
+    agent.color = [0, 0, 1, 1]; // Blue color for cars
     scene.addObject(agent);
   }
+
+  // Store the car template for dynamically spawned cars
+  scene.carTemplate = carTemplate;
 
   /* 
   // ALTERNATIVE: Use 3D car models instead of cubes
@@ -371,6 +382,21 @@ async function drawScene() {
   // Update the scene after the elapsed duration
   if (elapsed >= duration) {
     elapsed = 0;
+    
+    // Check for newly spawned cars and add them to the scene
+    for (const agent of agents) {
+      if (!scene.objects.includes(agent)) {
+        // New car detected, set up its visual properties
+        agent.arrays = scene.carTemplate.arrays;
+        agent.bufferInfo = scene.carTemplate.bufferInfo;
+        agent.vao = scene.carTemplate.vao;
+        agent.scale = { ...scene.carTemplate.scale };
+        agent.color = [0, 0, 1, 1]; // Blue color for cars
+        scene.addObject(agent);
+        console.log("Added new car to scene:", agent.id);
+      }
+    }
+    
     await update();
   }
 

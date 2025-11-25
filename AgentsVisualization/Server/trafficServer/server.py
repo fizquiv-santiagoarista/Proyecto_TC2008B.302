@@ -25,6 +25,10 @@ def agent_portrayal(agent):
 
     if isinstance(agent, Obstacle):
         portrayal.color = "#555"
+    
+    if isinstance(agent, Car):
+        portrayal.color = "blue"
+        portrayal.size = 15
 
     return portrayal
 
@@ -34,7 +38,14 @@ def post_process(ax):
 
 
 model_params = {
-    "N": 5,
+    "N": {
+        "type": "SliderInt",
+        "value": 2,
+        "label": "Cars Added Per Spawn (every 10 steps)",
+        "min": 1,
+        "max": 10,
+        "step": 1,
+    },
     "seed": {
         "type": "InputText",
         "value": 42,

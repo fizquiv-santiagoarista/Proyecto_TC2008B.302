@@ -91,6 +91,12 @@ async function getAgents() {
                         // Update the agent's position
                         current_agent.oldPosArray = current_agent.posArray;
                         current_agent.position = {x: agent.x, y: agent.y, z: agent.z};
+                    } else {
+                        // Create it (for dynamically spawned cars)
+                        const newAgent = new Object3D(agent.id, [agent.x, agent.y, agent.z]);
+                        newAgent['oldPosArray'] = newAgent.posArray;
+                        agents.push(newAgent);
+                        console.log("New car spawned with ID:", agent.id);
                     }
 
                     //console.log("OLD: ", current_agent.oldPosArray,

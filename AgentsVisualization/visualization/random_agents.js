@@ -19,13 +19,15 @@ import { Camera3D } from '../libs/camera3d';
 
 // Functions and arrays for the communication with the API
 import {
-  agents, obstacles, initAgentsModel,
-  update, getAgents, getObstacles
+  agents, obstacles, trafficLights, initAgentsModel,
+  update, getAgents, getObstacles, getTrafficLights
 } from '../libs/api_connection.js';
 
 // Define the shader code, using GLSL 3.00
 import vsGLSL from '../assets/shaders/vs_color.glsl?raw';
 import fsGLSL from '../assets/shaders/fs_color.glsl?raw';
+import vsFlatGLSL from '../assets/shaders/vs_flat.glsl?raw';
+import fsFlatGLSL from '../assets/shaders/fs_flat.glsl?raw';
 
 const scene = new Scene3D();
 
@@ -44,6 +46,7 @@ const settings = {
 
 // Global variables
 let colorProgramInfo = undefined;
+let flatProgramInfo = undefined;
 let gl = undefined;
 const duration = 1000; // ms
 let elapsed = 0;
@@ -60,6 +63,7 @@ async function main() {
 
   // Prepare the program with the shaders
   colorProgramInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
+  flatProgramInfo = twgl.createProgramInfo(gl, [vsFlatGLSL, fsFlatGLSL]);
 
   // Initialize the agents model
   await initAgentsModel();
@@ -67,6 +71,7 @@ async function main() {
   // Get the agents and obstacles
   await getAgents();
   await getObstacles();
+  await getTrafficLights();
 
 
   // Initialize the scene
@@ -103,6 +108,10 @@ function setupObjects(scene, gl, programInfo) {
   const baseCube = new Object3D(-1);
   baseCube.prepareVAO(gl, programInfo);
 
+  // Create a separate cube for flat-shaded objects (traffic lights)
+  const flatCube = new Object3D(-2);
+  flatCube.prepareVAO(gl, flatProgramInfo);
+
   /*
   // A scaled cube to use as the ground
   const ground = new Object3D(-3, [14, 0, 14]);
@@ -131,6 +140,17 @@ function setupObjects(scene, gl, programInfo) {
     agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
     agent.color = [0.7, 0.7, 0.7, 1.0];
     scene.addObject(agent);
+  }
+
+  // Copy the properties of the base objects for traffic lights
+  for (const light of trafficLights) {
+    light.arrays = flatCube.arrays;
+    light.bufferInfo = flatCube.bufferInfo;
+    light.vao = flatCube.vao;
+    light.scale = { x: 0.5, y: 1.0, z: 0.5 }; // Taller to look like a traffic light
+    light.usesFlatShader = true; // Flag to use flat shader with u_color uniform
+    // Color is already set in getTrafficLights based on state
+    scene.addObject(light);
   }
 
 }
@@ -176,6 +196,12 @@ function drawObject(gl, programInfo, object, viewProjectionMatrix, fract) {
   let objectUniforms = {
     u_transforms: wvpMat
   }
+  
+  // If object uses flat shader, also pass the color uniform
+  if (object.usesFlatShader) {
+    objectUniforms.u_color = object.color;
+  }
+  
   twgl.setUniforms(programInfo, objectUniforms);
 
   gl.bindVertexArray(object.vao);
@@ -203,10 +229,20 @@ async function drawScene() {
   //console.log(scene.camera);
   const viewProjectionMatrix = setupViewProjection(gl);
 
-  // Draw the objects
+  // Draw the objects with color shader
   gl.useProgram(colorProgramInfo.program);
   for (let object of scene.objects) {
-    drawObject(gl, colorProgramInfo, object, viewProjectionMatrix, fract);
+    if (!object.usesFlatShader) {
+      drawObject(gl, colorProgramInfo, object, viewProjectionMatrix, fract);
+    }
+  }
+
+  // Draw the objects with flat shader (traffic lights)
+  gl.useProgram(flatProgramInfo.program);
+  for (let object of scene.objects) {
+    if (object.usesFlatShader) {
+      drawObject(gl, flatProgramInfo, object, viewProjectionMatrix, fract);
+    }
   }
 
   // Update the scene after the elapsed duration

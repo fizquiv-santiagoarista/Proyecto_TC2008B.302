@@ -20,10 +20,15 @@ const destinations = [];
 
 // Define the data object
 const initData = {
-  NAgents: 20,
+  NAgents: 2,
   width: 28,
   height: 28,
 };
+
+// Function to update NAgents value
+function setNAgents(value) {
+  initData.NAgents = value;
+}
 
 /* FUNCTIONS FOR THE INTERACTION WITH THE MESA SERVER */
 
@@ -79,7 +84,20 @@ async function getAgents() {
         // Log the agents array
         //console.log("Agents:", agents);
       } else {
-        // Update the positions of existing agents
+        // Get the IDs of agents from the server
+        const serverAgentIds = new Set(
+          result.positions.map((agent) => agent.id)
+        );
+
+        // Remove agents that are no longer on the server (reached destination)
+        for (let i = agents.length - 1; i >= 0; i--) {
+          if (!serverAgentIds.has(agents[i].id)) {
+            console.log("Removing car with ID:", agents[i].id);
+            agents.splice(i, 1);
+          }
+        }
+
+        // Update the positions of existing agents and add new ones
         for (const agent of result.positions) {
           const current_agent = agents.find(
             (object3d) => object3d.id == agent.id
@@ -90,11 +108,41 @@ async function getAgents() {
             // Update the agent's position
             current_agent.oldPosArray = current_agent.posArray;
             current_agent.position = { x: agent.x, y: agent.y, z: agent.z };
+          } else {
+            // Create it (for dynamically spawned cars)
+            const newAgent = new Object3D(agent.id, [
+              agent.x,
+              agent.y,
+              agent.z,
+            ]);
+            newAgent["oldPosArray"] = newAgent.posArray;
+            agents.push(newAgent);
+            console.log("New car spawned with ID:", agent.id);
           }
 
           //console.log("OLD: ", current_agent.oldPosArray,
           //            " NEW: ", current_agent.posArray);
         }
+      }
+
+      // Log the agents array
+      //console.log("Agents:", agents);
+    } else {
+      // Update the positions of existing agents
+      for (const agent of result.positions) {
+        const current_agent = agents.find(
+          (object3d) => object3d.id == agent.id
+        );
+
+        // Check if the agent exists in the agents array
+        if (current_agent != undefined) {
+          // Update the agent's position
+          current_agent.oldPosArray = current_agent.posArray;
+          current_agent.position = { x: agent.x, y: agent.y, z: agent.z };
+        }
+
+        //console.log("OLD: ", current_agent.oldPosArray,
+        //            " NEW: ", current_agent.posArray);
       }
     }
   } catch (error) {

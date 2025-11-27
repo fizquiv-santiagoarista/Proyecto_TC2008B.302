@@ -38,6 +38,8 @@ import {
   getObstacles,
   getTrafficLights,
   getDestinations,
+  setNAgents,
+  initData,
 } from "../libs/api_connection.js";
 
 // Define the shader code, using GLSL 3.00
@@ -175,13 +177,24 @@ async function setupObjects(scene, gl, programInfo) {
   scene.addObject(ground);
 
   // AGENTS (Cars) - Using simple cubes
+  const carTemplate = {
+    arrays: baseCube.arrays,
+    bufferInfo: baseCube.bufferInfo,
+    vao: baseCube.vao,
+    scale: { x: 0.5, y: 0.5, z: 0.5 },
+  };
+
   for (const agent of agents) {
-    agent.arrays = baseCube.arrays;
-    agent.bufferInfo = baseCube.bufferInfo;
-    agent.vao = baseCube.vao;
-    agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
+    agent.arrays = carTemplate.arrays;
+    agent.bufferInfo = carTemplate.bufferInfo;
+    agent.vao = carTemplate.vao;
+    agent.scale = { ...carTemplate.scale };
+    agent.color = [0, 0, 1, 1]; // Blue color for cars
     scene.addObject(agent);
   }
+
+  // Store the car template for dynamically spawned cars
+  scene.carTemplate = carTemplate;
 
   /* 
   // ALTERNATIVE: Use 3D car models instead of cubes
@@ -646,6 +659,39 @@ async function drawScene() {
   // Update the scene after the elapsed duration
   if (elapsed >= duration) {
     elapsed = 0;
+
+    // Remove cars from scene that are no longer in the agents array (reached destination)
+    for (let i = scene.objects.length - 1; i >= 0; i--) {
+      const sceneObject = scene.objects[i];
+      // Check if this is a car (has the car template properties)
+      if (
+        sceneObject.scale &&
+        sceneObject.scale.x === 0.5 &&
+        sceneObject.scale.y === 0.5
+      ) {
+        // Check if this car still exists in the agents array
+        const stillExists = agents.some((agent) => agent.id === sceneObject.id);
+        if (!stillExists) {
+          console.log("Removing car from scene:", sceneObject.id);
+          scene.objects.splice(i, 1);
+        }
+      }
+    }
+
+    // Check for newly spawned cars and add them to the scene
+    for (const agent of agents) {
+      if (!scene.objects.includes(agent)) {
+        // New car detected, set up its visual properties
+        agent.arrays = scene.carTemplate.arrays;
+        agent.bufferInfo = scene.carTemplate.bufferInfo;
+        agent.vao = scene.carTemplate.vao;
+        agent.scale = { ...scene.carTemplate.scale };
+        agent.color = [0, 0, 1, 1]; // Blue color for cars
+        scene.addObject(agent);
+        console.log("Added new car to scene:", agent.id);
+      }
+    }
+
     await update();
   }
 
@@ -673,9 +719,20 @@ function setupViewProjection(gl) {
 
 // Setup a ui.
 function setupUI() {
-  /*
   const gui = new GUI();
 
+  // Settings for car spawning
+  const spawnFolder = gui.addFolder("Car Spawning:");
+  spawnFolder
+    .add(initData, "NAgents", 1, 10, 1)
+    .name("Cars per spawn (every 10 steps)")
+    .onChange((value) => {
+      setNAgents(value);
+      console.log("Cars per spawn set to:", value);
+    });
+  spawnFolder.open();
+
+  /*
   // Settings for the animation
   const animFolder = gui.addFolder('Animation:');
   animFolder.add( settings.rotationSpeed, 'x', 0, 360)

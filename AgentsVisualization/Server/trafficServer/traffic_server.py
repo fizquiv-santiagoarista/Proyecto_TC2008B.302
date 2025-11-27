@@ -65,7 +65,7 @@ def getAgents():
                 (cell.coordinate, agent)
                 for cell in agentCells
                 for agent in cell.agents
-                if isinstance(agent, Car)
+                if isinstance(agent, Car) and not getattr(agent, 'reached_destination', False)
             ]
             # print(f"AGENTS: {agents}")
 

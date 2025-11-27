@@ -80,13 +80,41 @@ class CityModel(Model):
             (self.width - 1, self.height - 1) # Top-right
         ]
         
-        # Get corner cells that are roads
+        # Get corner cells that are roads and have valid next cells
         self.corner_road_cells = []
         for corner_pos in corners:
             cell = self.grid[corner_pos]
             # Check if the cell has a Road agent
-            if any(isinstance(agent, Road) for agent in cell.agents):
-                self.corner_road_cells.append(cell)
+            has_road = any(isinstance(agent, Road) for agent in cell.agents)
+            if not has_road:
+                continue
+            
+            # Check if this road leads to a valid cell (not out of bounds)
+            # Get the road direction
+            road_dir = None
+            for agent in cell.agents:
+                if isinstance(agent, Road):
+                    road_dir = agent.direction
+                    break
+            
+            if road_dir:
+                # Calculate next position based on direction
+                x, y = corner_pos
+                if road_dir == "Up":
+                    next_pos = (x, y + 1)
+                elif road_dir == "Down":
+                    next_pos = (x, y - 1)
+                elif road_dir == "Left":
+                    next_pos = (x - 1, y)
+                elif road_dir == "Right":
+                    next_pos = (x + 1, y)
+                else:
+                    continue
+                
+                # Only add if next position is within bounds
+                if (0 <= next_pos[0] < self.width and 
+                    0 <= next_pos[1] < self.height):
+                    self.corner_road_cells.append(cell)
         
         if not self.corner_road_cells:
             print("Warning: No road cells found at map corners. Cars cannot be spawned.")

@@ -87,7 +87,18 @@ async function getAgents() {
                 //console.log("Agents:", agents);
 
             } else {
-                // Update the positions of existing agents
+                // Get the IDs of agents from the server
+                const serverAgentIds = new Set(result.positions.map(agent => agent.id));
+                
+                // Remove agents that are no longer on the server (reached destination)
+                for (let i = agents.length - 1; i >= 0; i--) {
+                    if (!serverAgentIds.has(agents[i].id)) {
+                        console.log("Removing car with ID:", agents[i].id);
+                        agents.splice(i, 1);
+                    }
+                }
+                
+                // Update the positions of existing agents and add new ones
                 for (const agent of result.positions) {
                     const current_agent = agents.find((object3d) => object3d.id == agent.id);
 

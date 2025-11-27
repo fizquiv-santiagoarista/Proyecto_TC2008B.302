@@ -383,6 +383,20 @@ async function drawScene() {
   if (elapsed >= duration) {
     elapsed = 0;
     
+    // Remove cars from scene that are no longer in the agents array (reached destination)
+    for (let i = scene.objects.length - 1; i >= 0; i--) {
+      const sceneObject = scene.objects[i];
+      // Check if this is a car (has the car template properties)
+      if (sceneObject.scale && sceneObject.scale.x === 0.5 && sceneObject.scale.y === 0.5) {
+        // Check if this car still exists in the agents array
+        const stillExists = agents.some(agent => agent.id === sceneObject.id);
+        if (!stillExists) {
+          console.log("Removing car from scene:", sceneObject.id);
+          scene.objects.splice(i, 1);
+        }
+      }
+    }
+    
     // Check for newly spawned cars and add them to the scene
     for (const agent of agents) {
       if (!scene.objects.includes(agent)) {

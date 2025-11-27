@@ -38,6 +38,11 @@ void main() {
     vec4 specularColor = vec4(0, 0, 0, 1);
 
     for (int i=0; i<NUM_LIGHTS; i++) {
+        // Calculate distance squared for attenuation (optimization - avoids sqrt)
+        float distanceSquared = dot(v_surfaceToLight[i], v_surfaceToLight[i]);
+        // Simple inverse square falloff with a small constant to avoid division by zero
+        float attenuation = 1.0 / (1.0 + 0.05 * distanceSquared);
+        
         vec3 surfToLigthDirection = normalize(v_surfaceToLight[i]);
         // Finding the reflection vector
         // https://en.wikipedia.org/wiki/Phong_reflection_model
@@ -51,8 +56,8 @@ void main() {
             specular = pow(max(specular_dot, 0.0), u_shininess);
         }
 
-        diffuseColor += light * color * u_diffuseLight[i];
-        specularColor += specular * color * u_specularLight[i];
+        diffuseColor += (light * color * u_diffuseLight[i]) * attenuation;
+        specularColor += (specular * color * u_specularLight[i]) * attenuation;
     }
 
     // Use the color of the texture on the object

@@ -288,4 +288,6 @@ export {
   getObstacles,
   getDestinations,
   getTrafficLights,
+  initData,
+  setNAgents,
 };

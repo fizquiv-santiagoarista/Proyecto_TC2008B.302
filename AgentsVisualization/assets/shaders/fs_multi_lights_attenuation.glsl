@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 
-const int NUM_LIGHTS = 3;
+const int NUM_LIGHTS = 20;
 
 in vec4 v_position;
 in vec3 v_normal;

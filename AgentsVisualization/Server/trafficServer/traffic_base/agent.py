@@ -68,10 +68,15 @@ class Car(CellAgent):
     def is_cell_blocked(self, cell):
         """
         Check if a cell is blocked by another car or an obstacle.
+        Ignores cars that have reached their destination.
         """
         for agent in cell.agents:
-            if isinstance(agent, Car) or isinstance(agent, Obstacle):
+            if isinstance(agent, Obstacle):
                 return True
+            if isinstance(agent, Car):
+                # Don't consider it blocked if the car has reached its destination
+                if not getattr(agent, 'reached_destination', False):
+                    return True
         return False
     
     def is_traffic_light_red(self, cell):
@@ -219,7 +224,7 @@ class Car(CellAgent):
                     adjacent_directions.add(neighbor_road_dir)
         
         # If we have roads in 3+ different directions nearby, it's an intersection
-        return len(adjacent_directions) >= 3
+        return len(adjacent_directions) >= 2
     
     def get_valid_neighbors(self, cell):
         """
@@ -233,10 +238,6 @@ class Car(CellAgent):
         - Cars can move FORWARD in the direction of their current road
         - Cars can move to the SIDES (left/right relative to current direction) for lane changes
         - Cars CANNOT move BACKWARD (opposite to current direction)
-        
-        Example: If current road direction is "Up":
-        - Can move: Up (forward), Left (side), Right (side)
-        - Cannot move: Down (backward)
         """
         neighbors = []
         current_pos = cell.coordinate
@@ -299,7 +300,119 @@ class Car(CellAgent):
             if neighbor_road_dir is None:
                 continue
             
+            # IMPORTANT: Validate that we can legally enter the neighbor road
+            # We can only enter a road if our entry direction is compatible with the road's flow
+            # For example, if we're moving "Down" to enter a road, the road should allow entry from above
+            # This means the road should be going Down, Left, or Right (not Up, which would be against us)
+            
+            # Define which neighbor road directions are compatible with each movement direction
+            # Format: movement_direction -> [allowed_neighbor_road_directions]
+            compatible_roads = {
+                "Up": ["Up", "Left", "Right"],      # Moving up: neighbor can be Up, Left, or Right (not Down - that would be head-on)
+                "Down": ["Down", "Left", "Right"],  # Moving down: neighbor can be Down, Left, or Right (not Up)
+                "Left": ["Left", "Up", "Down"],     # Moving left: neighbor can be Left, Up, or Down (not Right)
+                "Right": ["Right", "Up", "Down"]    # Moving right: neighbor can be Right, Up, or Down (not Left)
+            }
+            
+            # Check if the neighbor's road direction is compatible with our movement direction
+            allowed_neighbor_dirs = compatible_roads.get(move_direction, [])
+            if neighbor_road_dir not in allowed_neighbor_dirs:
+                continue
+            
             # Add this neighbor as a valid option
+            neighbors.append((neighbor_cell, move_direction))
+        
+        return neighbors
+    
+    def get_pathfinding_neighbors(self, cell):
+        """
+        Get valid neighboring cells for pathfinding purposes.
+        Unlike get_valid_neighbors (used for actual movement), this method explores
+        based on the CELL's road direction, not the car's current direction.
+        This allows A* to explore the entire road network.
+        
+        A valid neighbor must:
+        1. Be within grid bounds
+        2. Have a road or be the destination
+        3. NOT have obstacles
+        4. Be reachable following the road's direction
+        """
+        neighbors = []
+        current_pos = cell.coordinate
+        x, y = current_pos
+        
+        # Get the road direction of the cell we're exploring FROM
+        cell_road_dir = self.get_road_direction(cell)
+        
+        # If this cell has no road direction, it might be the destination
+        if cell_road_dir is None:
+            # Check if it's the destination
+            is_dest = any(isinstance(agent, Destination) for agent in cell.agents)
+            if is_dest:
+                # From destination, we can't go anywhere (this is the goal)
+                return neighbors
+            # If not destination and no road, we can't explore from here
+            return neighbors
+        
+        # Define which directions are allowed based on the CELL's road direction
+        # Format: road_direction -> [allowed_exit_directions]
+        allowed_directions = {
+            "Up": ["Up", "Left", "Right"],      # From Up road: can go Up, Left, or Right
+            "Down": ["Down", "Left", "Right"],  # From Down road: can go Down, Left, or Right
+            "Left": ["Left", "Up", "Down"],     # From Left road: can go Left, Up, or Down
+            "Right": ["Right", "Up", "Down"]    # From Right road: can go Right, Up, or Down
+        }
+        
+        valid_move_directions = allowed_directions.get(cell_road_dir, [])
+        
+        # Check all possible moves
+        possible_moves = [
+            ("Up", (x, y + 1)),
+            ("Down", (x, y - 1)),
+            ("Left", (x - 1, y)),
+            ("Right", (x + 1, y))
+        ]
+        
+        for move_direction, (nx, ny) in possible_moves:
+            # Skip if this direction is not allowed from current road
+            if move_direction not in valid_move_directions:
+                continue
+            
+            # Check bounds
+            if not (0 <= nx < self.model.grid.dimensions[0] and 
+                    0 <= ny < self.model.grid.dimensions[1]):
+                continue
+            
+            neighbor_cell = self.model.grid[(nx, ny)]
+            
+            # Check if neighbor is a destination
+            is_destination = any(isinstance(agent, Destination) for agent in neighbor_cell.agents)
+            if is_destination:
+                neighbors.append((neighbor_cell, move_direction))
+                continue
+            
+            # Skip obstacles
+            has_obstacle = any(isinstance(agent, Obstacle) for agent in neighbor_cell.agents)
+            if has_obstacle:
+                continue
+            
+            # Check if neighbor has a road
+            neighbor_road_dir = self.get_road_direction(neighbor_cell)
+            if neighbor_road_dir is None:
+                continue
+            
+            # Validate compatibility: prevent head-on collisions
+            compatible_roads = {
+                "Up": ["Up", "Left", "Right"],
+                "Down": ["Down", "Left", "Right"],
+                "Left": ["Left", "Up", "Down"],
+                "Right": ["Right", "Up", "Down"]
+            }
+            
+            allowed_neighbor_dirs = compatible_roads.get(move_direction, [])
+            if neighbor_road_dir not in allowed_neighbor_dirs:
+                continue
+            
             neighbors.append((neighbor_cell, move_direction))
         
         return neighbors
@@ -314,38 +427,6 @@ class Car(CellAgent):
         
         start = self.cell
         goal = self.destination.cell
-        
-        # Debug: Check initial neighbors
-        initial_neighbors = self.get_valid_neighbors(start)
-        if not initial_neighbors:
-            print(f"Car {self.unique_id}: No valid neighbors from start {start.coordinate}, road_dir={self.get_road_direction(start)}")
-            return []
-        else:
-            neighbor_coords = [n[0].coordinate for n in initial_neighbors]
-            neighbor_dirs = [n[1] for n in initial_neighbors]
-            print(f"Car {self.unique_id}: Found {len(initial_neighbors)} neighbors from start: {list(zip(neighbor_coords, neighbor_dirs))}")
-        
-        # Debug: Check what roads surround the start
-        x, y = start.coordinate
-        print(f"Car {self.unique_id}: Checking surrounding roads of start {start.coordinate}:")
-        for direction, (dx, dy) in [("Up", (0, 1)), ("Down", (0, -1)), ("Left", (-1, 0)), ("Right", (1, 0))]:
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < self.model.grid.dimensions[0] and 0 <= ny < self.model.grid.dimensions[1]:
-                neighbor = self.model.grid[(nx, ny)]
-                road_dir = self.get_road_direction(neighbor)
-                has_obs = any(isinstance(agent, Obstacle) for agent in neighbor.agents)
-                print(f"  {direction} ({nx},{ny}): road={road_dir}, obstacle={has_obs}")
-        
-        # Debug: Check if goal has any roads adjacent to it
-        goal_neighbors = []
-        gx, gy = goal.coordinate
-        for dx, dy in [(0,1), (0,-1), (1,0), (-1,0)]:
-            nx, ny = gx + dx, gy + dy
-            if 0 <= nx < self.model.grid.dimensions[0] and 0 <= ny < self.model.grid.dimensions[1]:
-                neighbor = self.model.grid[(nx, ny)]
-                if any(isinstance(agent, Road) for agent in neighbor.agents):
-                    goal_neighbors.append((nx, ny))
-        print(f"Car {self.unique_id}: Goal {goal.coordinate} has {len(goal_neighbors)} adjacent roads: {goal_neighbors}")
         
         # Priority queue: (f_score, counter, cell, path)
         # counter is used to break ties in priority queue
@@ -377,7 +458,14 @@ class Car(CellAgent):
             visited.add(current_cell)
             
             # Explore neighbors
-            neighbors = self.get_valid_neighbors(current_cell)
+            # For pathfinding, we need to get neighbors based on the CURRENT CELL's road direction,
+            # not the car's current direction
+            neighbors = self.get_pathfinding_neighbors(current_cell)
+            
+            # Debug: print neighbors for first few iterations
+            if iterations <= 15 and self.last_direction is None:
+                road_dir = self.get_road_direction(current_cell)
+                print(f"  Iteration {iterations}: cell {current_cell.coordinate}, road_dir={road_dir}, found {len(neighbors)} neighbors")
             
             for neighbor_cell, direction in neighbors:
                 if neighbor_cell in visited:
@@ -388,17 +476,18 @@ class Car(CellAgent):
                 move_cost = 1
                 
                 # Check if neighbor has cars (dynamic obstacles)
+                # Always add penalty for cells with cars to prefer less congested routes
+                # Cars are dynamic obstacles that will move, so we don't block completely
                 has_car = any(isinstance(agent, Car) for agent in neighbor_cell.agents)
                 if has_car:
-                    # Small penalty for cells with cars (they might move)
+                    # Penalty for cells with cars (prefer less congested paths)
                     move_cost += 3
                 
                 # Check for traffic lights - different penalties based on timeToChange
                 is_red, time_to_change = self.is_traffic_light_red(neighbor_cell)
                 if is_red:
-                    # S (timeToChange = 15) adds 15, s (timeToChange = 7) adds 7
-                    # This reflects how long the light stays red
-                    move_cost += time_to_change
+                    # Add penalty proportional to time_to_change but reduced
+                    move_cost += min(time_to_change // 2, 5)  # Cap at 5 to avoid over-penalizing
                 
                 tentative_g_score = g_score[current_cell] + move_cost
                 
@@ -415,7 +504,9 @@ class Car(CellAgent):
                     heapq.heappush(open_set, (f_score, counter, neighbor_cell, new_path))
         
         # No path found after exhausting all options
-        print(f"Car {self.unique_id}: Exhausted search after {iterations} iterations, visited {len(visited)} cells")
+        # Debug info
+        if self.last_direction is None:  # Only on initial pathfinding
+            print(f"    A* explored {len(visited)} cells, goal was at {goal.coordinate}")
         return []
     
     def update_path(self):
@@ -431,9 +522,17 @@ class Car(CellAgent):
             start_pos = self.cell.coordinate
             dest_pos = self.destination.cell.coordinate if self.destination else "None"
             road_dir = self.get_road_direction(self.cell)
-            print(f"Car {self.unique_id}: No path found from {start_pos} to {dest_pos}, road_dir={road_dir}, last_dir={self.last_direction}")
-        else:
-            print(f"Car {self.unique_id}: Path found with {len(self.path)} steps")
+            
+            # Get valid neighbors to understand the issue
+            neighbors = self.get_valid_neighbors(self.cell)
+            
+            # Print on first call (when last_direction is None) or every 50 steps
+            if self.last_direction is None or self.model.steps % 50 == 0:
+                print(f"Car {self.unique_id}: No path found from {start_pos} to {dest_pos}, road_dir={road_dir}, last_dir={self.last_direction}")
+                print(f"  Valid neighbors ({len(neighbors)}):")
+                for neighbor_cell, direction in neighbors:
+                    neighbor_dir = self.get_road_direction(neighbor_cell)
+                    print(f"    -> {neighbor_cell.coordinate} via {direction}, road_dir={neighbor_dir}")
     
     def get_next_cell_from_path(self):
         """
@@ -456,24 +555,14 @@ class Car(CellAgent):
         # Check if already at destination
         if self.destination and self.cell == self.destination.cell:
             self.reached_destination = True
-            print(f"Car {self.unique_id}: Reached destination at {self.cell.coordinate}, removing from simulation")
             # Remove car from simulation when it reaches destination
-            # First, explicitly remove from the cell's agent list
+            # Remove from the cell's agent list
             if self in self.cell.agents:
                 self.cell.agents.remove(self)
-                print(f"Car {self.unique_id}: Removed from cell agents")
             
-            # Then remove from the model's agent collection
+            # Remove from the model's agent collection
             if self in self.model.agents:
                 self.model.agents.remove(self)
-                print(f"Car {self.unique_id}: Removed from model agents")
-                
-            # Also try to remove from grid if possible (for safety)
-            try:
-                self.model.grid.remove_agent(self)
-                print(f"Car {self.unique_id}: Removed from grid using remove_agent")
-            except Exception as e:
-                pass
                 
             return
         
@@ -482,7 +571,6 @@ class Car(CellAgent):
             self.update_path()
             if not self.path:
                 # No path found, stay in place
-                print(f"Car {self.unique_id}: No path found to destination {self.destination.cell.coordinate} from {self.cell.coordinate}")
                 return
         
         # Update path index to match current position
@@ -499,16 +587,19 @@ class Car(CellAgent):
         next_cell = self.get_next_cell_from_path()
         
         if next_cell is None:
-            # End of path or no path, recalculate
-            self.update_path()
+            # End of path - might be at destination, check on next step
             return
         
-        # Check if next cell has a red traffic light (state = False means red)
-        is_red, _ = self.is_traffic_light_red(next_cell)
-        if is_red:
-            # Stop before entering the red light
-            return
+        # Check if next cell IS the destination - if so, always move there
+        is_next_destination = (self.destination and next_cell == self.destination.cell)
         
+        if not is_next_destination:
+            # Check if next cell has a red traffic light (state = False means red)
+            is_red, _ = self.is_traffic_light_red(next_cell)
+            if is_red:
+                # Stop before entering the red light
+                return
+            
         # Check if next cell is blocked by another car or obstacle
         if self.is_cell_blocked(next_cell):
             # Cell is blocked, wait or recalculate path
@@ -517,10 +608,13 @@ class Car(CellAgent):
             if has_obstacle:
                 # Permanent obstacle, need to recalculate path
                 self.update_path()
+            else:
+                # Blocked by another car - occasionally recalculate to find alternate route
+                # Recalculate every 5 steps if still blocked to avoid getting stuck
+                if self.model.steps % 5 == 0:
+                    self.update_path()
             # If it's just another car, wait for it to move
-            return
-        
-        # Calculate direction for this move
+            return        # Calculate direction for this move
         current_pos = self.cell.coordinate
         next_pos = next_cell.coordinate
         dx = next_pos[0] - current_pos[0]

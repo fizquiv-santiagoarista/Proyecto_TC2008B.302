@@ -31,7 +31,7 @@ class CityModel(Model):
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("city_files/2022_base.txt") as baseFile:
-            lines = baseFile.readlines()
+            lines = [line.strip() for line in baseFile.readlines()] 
             self.width = len(lines[0])
             self.height = len(lines)
 
@@ -51,9 +51,37 @@ class CityModel(Model):
 
                     elif col in ["S", "s"]:
                         # Traffic lights need to also have a Road underneath
-                        # The direction doesn't matter much since cars use their last_direction when on a traffic light
-                        # Just use a default direction
-                        Road(self, cell, "Right")
+                        # Infer the direction from the flow of traffic in the map
+                        # Check neighbors to see which direction cars would be coming FROM
+                        traffic_light_direction = None
+                        
+                        # Check each direction and see if there's a road pointing TO this cell
+                        # Left neighbor (c-1): if it has '>', it points right (to this cell)
+                        if c > 0 and lines[r][c-1] == '>':
+                            traffic_light_direction = "Right"
+                        # Right neighbor (c+1): if it has '<', it points left (to this cell)
+                        elif c < len(lines[r])-1 and lines[r][c+1] == '<':
+                            traffic_light_direction = "Left"
+                        # Top neighbor (r-1): if it has 'v', it points down (to this cell)
+                        elif r > 0 and lines[r-1][c] == 'v':
+                            traffic_light_direction = "Down"
+                        # Bottom neighbor (r+1): if it has '^', it points up (to this cell)
+                        elif r < len(lines)-1 and lines[r+1][c] == '^':
+                            traffic_light_direction = "Up"
+                        # If still not found, check same-direction neighbors (parallel traffic)
+                        elif c > 0 and lines[r][c-1] in ['<', 'v', '^']:
+                            traffic_light_direction = dataDictionary[lines[r][c-1]]
+                        elif c < len(lines[r])-1 and lines[r][c+1] in ['>', 'v', '^']:
+                            traffic_light_direction = dataDictionary[lines[r][c+1]]
+                        elif r > 0 and lines[r-1][c] in ['<', '>', 'v']:
+                            traffic_light_direction = dataDictionary[lines[r-1][c]]
+                        elif r < len(lines)-1 and lines[r+1][c] in ['<', '>', '^']:
+                            traffic_light_direction = dataDictionary[lines[r+1][c]]
+                        else:
+                            # Default fallback
+                            traffic_light_direction = "Right"
+                        
+                        Road(self, cell, traffic_light_direction)
                         self.road_cells.append(cell)
                         
                         # Then create the traffic light on top
@@ -135,6 +163,23 @@ class CityModel(Model):
                     # Select a corner to spawn the car (cycle through corners)
                     starting_cell = self.corner_road_cells[i % len(self.corner_road_cells)]
                     
+                    # Check if the starting cell is already occupied by a car
+                    cell_has_car = any(isinstance(agent, Car) for agent in starting_cell.agents)
+                    if cell_has_car:
+                        # Skip spawning if cell is occupied to avoid collisions
+                        continue
+                    
                     # Assign a random destination to the car
-                    destination = self.random.choice(self.destinations)
+                    # Avoid assigning destinations that are too close to the starting point
+                    # This helps distribute traffic better across the map
+                    available_destinations = [d for d in self.destinations 
+                                             if abs(d.cell.coordinate[0] - starting_cell.coordinate[0]) + 
+                                                abs(d.cell.coordinate[1] - starting_cell.coordinate[1]) > 5]
+                    
+                    if available_destinations:
+                        destination = self.random.choice(available_destinations)
+                    else:
+                        # If no distant destinations, use any destination
+                        destination = self.random.choice(self.destinations)
+                    
                     car = Car(self, starting_cell, destination)

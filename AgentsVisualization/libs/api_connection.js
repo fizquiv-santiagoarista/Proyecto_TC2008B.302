@@ -20,7 +20,7 @@ const trafficLights = [];
 
 // Define the data object
 const initData = {
-    NAgents: 2,
+    NAgents: 4,
     width: 28,
     height: 28
 };

@@ -493,7 +493,10 @@ async function setupObjects(scene, gl, programInfo) {
 function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   // Prepare the vector for translation and scale
   // Use interpolated position for agents, regular position for static objects
-  let v3_tra = object.interpolationProgress !== undefined ? object.interpolatedPosArray : object.posArray;
+  let v3_tra =
+    object.interpolationProgress !== undefined
+      ? object.interpolatedPosArray
+      : object.posArray;
   let v3_sca = object.scaArray;
 
   // Create the individual transform matrices
@@ -592,7 +595,10 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
 function drawObject(gl, programInfo, object, viewProjectionMatrix) {
   // Prepare the vector for translation and scale
   // Use interpolated position for agents, regular position for static objects
-  let v3_tra = object.interpolationProgress !== undefined ? object.interpolatedPosArray : object.posArray;
+  let v3_tra =
+    object.interpolationProgress !== undefined
+      ? object.interpolatedPosArray
+      : object.posArray;
   let v3_sca = object.scaArray;
 
   /*

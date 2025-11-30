@@ -283,49 +283,78 @@ async function setupObjects(scene, gl, programInfo) {
 
   // OBSTACLES (Trees and Bushes) - Using OBJ models with lighting
   try {
-    console.log("Loading tree and bush models...");
-    const treeModel = await createModelObject(
+    console.log("Loading tree and rock models...");
+    const treeLogModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "tree/tree.obj",
-      "tree/tree.mtl"
+      "tree2/tree2_log.obj"
     );
-    // const bushModel = await createModelObject(
-    //   gl,
-    //   lightProgramInfo,
-    //   "78-hazelnutbush/Hazelnut.obj"
-    // );
+    const treeLeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree2/tree2_leaves.obj"
+    );
+    const rockModel = await createModelObject(gl, lightProgramInfo, "rock.obj");
 
-    console.log("Tree and bush models loaded successfully!");
+    console.log("Tree and rock models loaded successfully!");
 
-    // Split obstacles: half trees, half bushes
+    // Define different shades of green for tree leaves (more distinct variations)
+    const greenShades = [
+      [0.05, 0.4, 0.05, 1.0], // Very dark green
+      [0.15, 0.6, 0.15, 1.0], // Medium green
+      [0.25, 0.75, 0.25, 1.0], // Bright green
+      [0.1, 0.55, 0.2, 1.0], // Forest green with more blue
+      [0.2, 0.65, 0.1, 1.0], // Yellow-green
+      [0.08, 0.5, 0.3, 1.0], // Teal-green
+    ];
+
+    // For each obstacle, alternate between trees and rocks
     for (let i = 0; i < obstacles.length; i++) {
       const obstacle = obstacles[i];
-      // const isTree = i % 2 === 0; // Even indices = trees, odd indices = bushes
+      const isTree = i % 2 === 0; // Even indices = trees, odd indices = rocks
 
-      obstacle.arrays = treeModel.arrays;
-      obstacle.bufferInfo = treeModel.bufferInfo;
-      obstacle.vao = treeModel.vao;
-      obstacle.texture = treeModel.texture; // Apply texture
-      obstacle.position.y = 1;
-      obstacle.scale = { x: 0.1, y: 0.1, z: 0.1 };
+      if (isTree) {
+        // Set up the log (brown) - using the existing obstacle object
+        obstacle.arrays = treeLogModel.arrays;
+        obstacle.bufferInfo = treeLogModel.bufferInfo;
+        obstacle.vao = treeLogModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 0.15, y: 0.15, z: 0.15 };
+        obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
+        obstacle.usesLighting = true;
+        scene.addObject(obstacle);
 
-      // } else {
-      //   obstacle.arrays = bushModel.arrays;
-      //   obstacle.bufferInfo = bushModel.bufferInfo;
-      //   obstacle.vao = bushModel.vao;
-      //   obstacle.texture = bushModel.texture; // Apply texture
-      //   obstacle.scale = { x: 0.1, y: 0.1, z: 0.1 };
-      // }
+        // Pick a random green shade for the leaves
+        const randomGreen =
+          greenShades[Math.floor(Math.random() * greenShades.length)];
 
-      obstacle.usesLighting = true;
-      scene.addObject(obstacle);
+        // Create the leaves (random green shade) as a NEW separate object at the same position
+        const leaves = new Object3D(
+          `${obstacle.id}_leaves`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [0.15, 0.15, 0.15],
+          randomGreen
+        );
+        leaves.arrays = treeLeavesModel.arrays;
+        leaves.bufferInfo = treeLeavesModel.bufferInfo;
+        leaves.vao = treeLeavesModel.vao;
+        leaves.usesLighting = true;
+        scene.addObject(leaves);
+      } else {
+        // Set up the rock (gray)
+        obstacle.arrays = rockModel.arrays;
+        obstacle.bufferInfo = rockModel.bufferInfo;
+        obstacle.vao = rockModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 0.15, y: 0.15, z: 0.15 };
+        obstacle.color = [0.5, 0.5, 0.5, 1.0]; // Gray color
+        obstacle.usesLighting = true;
+        scene.addObject(obstacle);
+      }
     }
   } catch (error) {
-    console.error(
-      "Failed to load tree/bush models, falling back to cubes:",
-      error
-    );
+    console.error("Failed to load tree models, falling back to cubes:", error);
     // Fallback to lit cubes if models fail to load
     for (const obstacle of obstacles) {
       obstacle.arrays = litCube.arrays;
@@ -339,32 +368,50 @@ async function setupObjects(scene, gl, programInfo) {
   }
 
   try {
-    const destModel = await createModelObject(
+    console.log("Loading mushroom models...");
+    const mushroomCapModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "20951_Mushroom_v1.obj",
-      "20951_Mushroom_v1.mtl"
+      "mushroom_cap.obj"
+    );
+    const mushroomLogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "mushroom_log.obj"
     );
 
-    console.log("Mushroom model loaded:", destModel);
-    console.log("Mushroom texture:", destModel.texture);
+    console.log("Mushroom models loaded successfully!");
 
     for (let i = 0; i < destinations.length; i++) {
       const destination = destinations[i];
       console.log(`loading mushroom at ${destination.position}`);
 
-      destination.arrays = destModel.arrays;
-      destination.bufferInfo = destModel.bufferInfo;
-      destination.vao = destModel.vao;
-      destination.texture = destModel.texture; // Apply texture
-      destination.scale = { x: 0.1, y: 0.1, z: 0.1 };
-      destination.rotRad = {
-        x: (270 * Math.PI) / 180,
-        y: (0 * Math.PI) / 180,
-        z: 0,
-      }; // 270° rotation on Y axis
+      // Set up the mushroom log (white) - using the existing destination object
+      destination.arrays = mushroomLogModel.arrays;
+      destination.bufferInfo = mushroomLogModel.bufferInfo;
+      destination.vao = mushroomLogModel.vao;
+      destination.scale = { x: 1, y: 1, z: 1 };
+      destination.color = [1.0, 1.0, 1.0, 1.0]; // White color
       destination.usesLighting = true;
       scene.addObject(destination);
+
+      // Create the mushroom cap (random color) as a NEW separate object at the same position
+      const cap = new Object3D(
+        `${destination.id}_cap`,
+        [
+          destination.position.x,
+          destination.position.y,
+          destination.position.z,
+        ],
+        [0, 0, 0],
+        [1, 1, 1],
+        [Math.random(), Math.random(), Math.random(), 1.0] // Random color
+      );
+      cap.arrays = mushroomCapModel.arrays;
+      cap.bufferInfo = mushroomCapModel.bufferInfo;
+      cap.vao = mushroomCapModel.vao;
+      cap.usesLighting = true;
+      scene.addObject(cap);
     }
   } catch (error) {
     console.error(
@@ -444,7 +491,7 @@ async function setupObjects(scene, gl, programInfo) {
       light.arrays = flowerModel.arrays;
       light.bufferInfo = flowerModel.bufferInfo;
       light.vao = flowerModel.vao;
-      light.position.y = 0.5;
+      light.position.y = 1;
       light.scale = { x: 0.05, y: 0.05, z: 0.05 };
       light.rotRad = {
         x: (270 * Math.PI) / 180,
@@ -527,15 +574,19 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   const diffuseLights = [];
   const specularLights = [];
 
-  // Fill with traffic light data (up to 10 lights) using Light3D properties
-  for (let i = 0; i < trafficLightLights.length; i++) {
+  // Limit to maximum 30 lights (shader's NUM_LIGHTS constant)
+  const MAX_LIGHTS = 30;
+  const numLights = Math.min(trafficLightLights.length, MAX_LIGHTS);
+
+  // Fill with traffic light data using Light3D properties
+  for (let i = 0; i < numLights; i++) {
     lightPositions.push(...trafficLightLights[i].posArray);
     diffuseLights.push(...trafficLightLights[i].diffuse);
     specularLights.push(...trafficLightLights[i].specular);
   }
 
-  if (trafficLightLights.length == 0) {
-    // Fill remaining slots with dummy lights (no contribution)
+  // Fill remaining slots with dummy lights (no contribution)
+  for (let i = numLights; i < MAX_LIGHTS; i++) {
     lightPositions.push(0, 100, 0); // Far away
     diffuseLights.push(0, 0, 0, 1);
     specularLights.push(0, 0, 0, 1);
@@ -555,6 +606,8 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     u_constant: 1.0,
     u_linear: 0.09,
     u_quadratic: 0.032,
+    u_color: object.color || [1, 1, 1, 1],
+    u_useTexture: object.texture ? true : false,
   };
 
   twgl.setUniforms(programInfo, objectUniforms);

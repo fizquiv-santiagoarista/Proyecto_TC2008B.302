@@ -77,8 +77,9 @@ async function getAgents() {
         // Create new agents and add them to the agents array
         for (const agent of result.positions) {
           const newAgent = new Object3D(agent.id, [agent.x, agent.y, agent.z]);
-          // Store the initial position
-          newAgent["oldPosArray"] = newAgent.posArray;
+          // Initialize old position same as current position
+          newAgent.oldPosition = { ...newAgent.position };
+          newAgent.interpolationProgress = 1.0; // Start fully interpolated
           agents.push(newAgent);
         }
         // Log the agents array
@@ -105,9 +106,8 @@ async function getAgents() {
 
           // Check if the agent exists in the agents array
           if (current_agent != undefined) {
-            // Update the agent's position
-            current_agent.oldPosArray = current_agent.posArray;
-            current_agent.position = { x: agent.x, y: agent.y, z: agent.z };
+            // Update the agent's position using setPosition to trigger interpolation
+            current_agent.setPosition([agent.x, agent.y, agent.z]);
           } else {
             // Create it (for dynamically spawned cars)
             const newAgent = new Object3D(agent.id, [
@@ -115,7 +115,8 @@ async function getAgents() {
               agent.y,
               agent.z,
             ]);
-            newAgent["oldPosArray"] = newAgent.posArray;
+            newAgent.oldPosition = { ...newAgent.position };
+            newAgent.interpolationProgress = 1.0; // Start fully interpolated
             agents.push(newAgent);
             console.log("New car spawned with ID:", agent.id);
           }

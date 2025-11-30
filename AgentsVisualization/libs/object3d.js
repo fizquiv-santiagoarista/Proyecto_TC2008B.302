@@ -52,19 +52,47 @@ class Object3D {
         this.arrays = undefined;
         this.bufferInfo = undefined;
         this.vao = undefined;
+        // Interpolation properties for smooth movement
+        this.interpolationProgress = 0;
+        this.oldPosition = { ...this.position };
     }
 
     setPosition(position) {
+        // Store old position for interpolation
+        this.oldPosition = { ...this.position };
         this.position = {
             x: position[0],
             y: position[1],
             z: position[2],
+        };
+        // Reset interpolation when position changes
+        this.interpolationProgress = 0;
+    }
+
+    // Update interpolation for smooth movement
+    updateInterpolation(deltaProgress) {
+        this.interpolationProgress = Math.min(1.0, this.interpolationProgress + deltaProgress);
+    }
+
+    // Get interpolated position based on current progress
+    getInterpolatedPosition() {
+        const t = this.interpolationProgress;
+        return {
+            x: this.oldPosition.x + (this.position.x - this.oldPosition.x) * t,
+            y: this.oldPosition.y + (this.position.y - this.oldPosition.y) * t,
+            z: this.oldPosition.z + (this.position.z - this.oldPosition.z) * t,
         };
     }
 
     // Return the position as an array
     get posArray() {
         return [this.position.x, this.position.y, this.position.z];
+    }
+
+    // Return the interpolated position as an array
+    get interpolatedPosArray() {
+        const pos = this.getInterpolatedPosition();
+        return [pos.x, pos.y, pos.z];
     }
 
     // Return the scale as an array

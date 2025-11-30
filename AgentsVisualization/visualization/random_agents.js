@@ -157,11 +157,17 @@ async function setupObjects(scene, gl, programInfo) {
   // bground.scale = { x: 50, y: 0.1, z: 50 };
 
   // GROUND - Flat cube with texture
-  const ground = new Object3D(-100);
+  const ground = await createModelObject(
+    gl,
+    lightProgramInfo,
+    "floor_grass.obj",
+    "floor_grass.mtl"
+  );
+  ground.position.y += 5;
   ground.arrays = litCube.arrays;
   ground.bufferInfo = litCube.bufferInfo;
   ground.vao = litCube.vao;
-  ground.scale = { x: 50, y: 0.1, z: 50 };
+  ground.scale = { x: 1, y: 1, z: 1 };
   ground.usesLighting = true;
 
   // Load and apply texture to the ground
@@ -175,45 +181,105 @@ async function setupObjects(scene, gl, programInfo) {
   }
 
   scene.addObject(ground);
-
-  // AGENTS (Cars) - Using simple cubes
-  const carTemplate = {
-    arrays: baseCube.arrays,
-    bufferInfo: baseCube.bufferInfo,
-    vao: baseCube.vao,
-    scale: { x: 0.5, y: 0.5, z: 0.5 },
-  };
-
-  for (const agent of agents) {
-    agent.arrays = carTemplate.arrays;
-    agent.bufferInfo = carTemplate.bufferInfo;
-    agent.vao = carTemplate.vao;
-    agent.scale = { ...carTemplate.scale };
-    agent.color = [0, 0, 1, 1]; // Blue color for cars
-    scene.addObject(agent);
-  }
-
-  // Store the car template for dynamically spawned cars
-  scene.carTemplate = carTemplate;
-
-  /* 
-  // ALTERNATIVE: Use 3D car models instead of cubes
-  // Uncomment this section and comment out the cube version above
-  const carModel = await createModelObject(
-    gl, 
-    programInfo,
-    'car-2024-301.obj',      // OBJ file in assets/models/
-    'car-2024-301.mtl'       // MTL file (optional)
+  const skybox = await createModelObject(
+    gl,
+    lightProgramInfo,
+    "skybox.obj",
+    "skybox.mtl"
   );
-  
-  for (const agent of agents) {
-    agent.arrays = carModel.arrays;
-    agent.bufferInfo = carModel.bufferInfo;
-    agent.vao = carModel.vao;
-    agent.scale = { x: 0.3, y: 0.3, z: 0.3 };
-    scene.addObject(agent);
+  skybox.position.y += 5;
+  skybox.arrays = litCube.arrays;
+  skybox.bufferInfo = litCube.bufferInfo;
+  skybox.vao = litCube.vao;
+  skybox.scale = { x: 50, y: 50, z: 50 };
+  skybox.usesLighting = true;
+
+  // Load and apply texture to the skybox
+  try {
+    skybox.texture = createTexture(gl, textureImage);
+    console.log("skybox texture loaded successfully!");
+  } catch (error) {
+    console.error("Failed to load skybox texture:", error);
+    skybox.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
   }
-  */
+
+  scene.addObject(skybox);
+
+  // AGENTS (Butterflies) - Using butterfly 3D model
+  let butterflyModels = { leftWing: null, rightWing: null, body: null };
+
+  try {
+    console.log("Loading butterfly model...");
+    butterflyModels.leftWing = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/left_wing.obj",
+      "butteryfly/left_wing.mtl"
+    );
+
+    butterflyModels.rightWing = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/right_wing.obj",
+      "butteryfly/right_wing.mtl"
+    );
+
+    butterflyModels.body = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/butterfly_body.obj",
+      "butteryfly/butterfly_body.mtl"
+    );
+
+    console.log("Butterfly model loaded successfully!");
+
+    for (const agent of agents) {
+      agent.arrays = butterflyModels.leftWing.arrays;
+      agent.bufferInfo = butterflyModels.leftWing.bufferInfo;
+      agent.vao = butterflyModels.leftWing.vao;
+      agent.texture = butterflyModels.leftWing.texture; // Apply texture
+      agent.scale = { x: 0.005, y: 0.005, z: 0.005 };
+      agent.position.y += 0.5;
+      agent.color = [1.0, 0.8, 0.2, 1.0];
+      agent.usesLighting = true;
+      scene.addObject(agent);
+    }
+  } catch (error) {
+    console.error(
+      "Failed to load butterfly model, falling back to cubes:",
+      error
+    );
+    // Fallback to cubes
+    for (const agent of agents) {
+      agent.arrays = baseCube.arrays;
+      agent.bufferInfo = baseCube.bufferInfo;
+      agent.vao = baseCube.vao;
+      agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
+      agent.color = [1, 0.8, 0.2, 1];
+      scene.addObject(agent);
+    }
+  }
+
+  // Store the butterfly template for dynamically spawned agents
+  if (
+    butterflyModels.leftWing &&
+    butterflyModels.rightWing &&
+    butterflyModels.body
+  ) {
+    scene.butterflyTemplate = {
+      wing: butterflyModels.leftWing,
+      rightWing: butterflyModels.rightWing,
+      body: butterflyModels.body,
+      scale: { x: 0.005, y: 0.005, z: 0.005 },
+    };
+  } else {
+    scene.butterflyTemplate = {
+      arrays: baseCube.arrays,
+      bufferInfo: baseCube.bufferInfo,
+      vao: baseCube.vao,
+      scale: { x: 0.5, y: 0.5, z: 0.5 },
+    };
+  }
 
   // OBSTACLES (Trees and Bushes) - Using OBJ models with lighting
   try {
@@ -221,33 +287,36 @@ async function setupObjects(scene, gl, programInfo) {
     const treeModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "Treeobj.obj"
+      "tree/tree.obj",
+      "tree/tree.mtl"
     );
-    const bushModel = await createModelObject(
-      gl,
-      lightProgramInfo,
-      "78-hazelnutbush/Hazelnut.obj"
-    );
+    // const bushModel = await createModelObject(
+    //   gl,
+    //   lightProgramInfo,
+    //   "78-hazelnutbush/Hazelnut.obj"
+    // );
 
     console.log("Tree and bush models loaded successfully!");
 
     // Split obstacles: half trees, half bushes
     for (let i = 0; i < obstacles.length; i++) {
       const obstacle = obstacles[i];
-      const isTree = i % 2 === 0; // Even indices = trees, odd indices = bushes
+      // const isTree = i % 2 === 0; // Even indices = trees, odd indices = bushes
 
-      if (isTree) {
-        obstacle.arrays = treeModel.arrays;
-        obstacle.bufferInfo = treeModel.bufferInfo;
-        obstacle.vao = treeModel.vao;
-        obstacle.position.y = 1;
-        obstacle.scale = { x: 0.2, y: 0.2, z: 0.2 };
-      } else {
-        obstacle.arrays = bushModel.arrays;
-        obstacle.bufferInfo = bushModel.bufferInfo;
-        obstacle.vao = bushModel.vao;
-        obstacle.scale = { x: 0.1, y: 0.1, z: 0.1 };
-      }
+      obstacle.arrays = treeModel.arrays;
+      obstacle.bufferInfo = treeModel.bufferInfo;
+      obstacle.vao = treeModel.vao;
+      obstacle.texture = treeModel.texture; // Apply texture
+      obstacle.position.y = 1;
+      obstacle.scale = { x: 0.1, y: 0.1, z: 0.1 };
+
+      // } else {
+      //   obstacle.arrays = bushModel.arrays;
+      //   obstacle.bufferInfo = bushModel.bufferInfo;
+      //   obstacle.vao = bushModel.vao;
+      //   obstacle.texture = bushModel.texture; // Apply texture
+      //   obstacle.scale = { x: 0.1, y: 0.1, z: 0.1 };
+      // }
 
       obstacle.usesLighting = true;
       scene.addObject(obstacle);
@@ -273,8 +342,12 @@ async function setupObjects(scene, gl, programInfo) {
     const destModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "mushroom.obj"
+      "20951_Mushroom_v1.obj",
+      "20951_Mushroom_v1.mtl"
     );
+
+    console.log("Mushroom model loaded:", destModel);
+    console.log("Mushroom texture:", destModel.texture);
 
     for (let i = 0; i < destinations.length; i++) {
       const destination = destinations[i];
@@ -283,6 +356,7 @@ async function setupObjects(scene, gl, programInfo) {
       destination.arrays = destModel.arrays;
       destination.bufferInfo = destModel.bufferInfo;
       destination.vao = destModel.vao;
+      destination.texture = destModel.texture; // Apply texture
       destination.scale = { x: 0.1, y: 0.1, z: 0.1 };
       destination.rotRad = {
         x: (270 * Math.PI) / 180,
@@ -384,9 +458,9 @@ async function setupObjects(scene, gl, programInfo) {
       const pointLight = new Light3D(
         `trafficLight_${trafficLightLights.length}`,
         [light.position.x, light.position.y + 0.5, light.position.z], // position
-        [0.3, 0.3, 0.3, 1.0], // ambient
-        light.state ? [0, 2.5, 0, 1] : [2.5, 0, 0, 1], // diffuse - bright green or red
-        light.state ? [0, 1.5, 0, 1] : [1.5, 0, 0, 1] // specular
+        [0.1, 0.1, 0.1, 1.0], // ambient
+        light.state ? [0, 0.3, 0, 1] : [0.3, 0, 0, 1], // diffuse - green or red
+        light.state ? [0, 0.2, 0, 1] : [0.2, 0, 0, 1] // specular
       );
       trafficLightLights.push(pointLight);
     }
@@ -406,37 +480,20 @@ async function setupObjects(scene, gl, programInfo) {
       const pointLight = new Light3D(
         `trafficLight_${trafficLightLights.length}`,
         [light.position.x, light.position.y + 0.5, light.position.z], // position
-        [0.3, 0.3, 0.3, 1.0], // ambient
-        light.state ? [0, 2.5, 0, 1] : [2.5, 0, 0, 1], // diffuse - bright green or red
-        light.state ? [0, 1.5, 0, 1] : [1.5, 0, 0, 1] // specular
+        [0.1, 0.1, 0.1, 1.0], // ambient
+        light.state ? [0, 0.3, 0, 1] : [0.3, 0, 0, 1], // diffuse - green or red
+        light.state ? [0, 0.2, 0, 1] : [0.2, 0, 0, 1] // specular
       );
       trafficLightLights.push(pointLight);
     }
   }
-
-  /*
-  // ALTERNATIVE: Use 3D stoplight models
-  // Note: Won't support dynamic color changes unless using custom shader
-  const stoplightModel = await createModelObject(
-    gl,
-    programInfo,
-    'stoplight_1.obj',
-    'stoplight_1.mtl'
-  );
-*/
-  // for (const light of trafficLights) {
-  //   light.arrays = stoplightModel.arrays;
-  //   light.bufferInfo = stoplightModel.bufferInfo;
-  //   light.vao = stoplightModel.vao;
-  //   light.scale = { x: 0.3, y: 0.3, z: 0.3 };
-  //   scene.addObject(light);
-  // }
 }
 
 // Draw an object with lighting (traffic light glow effect)
 function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   // Prepare the vector for translation and scale
-  let v3_tra = object.posArray;
+  // Use interpolated position for agents, regular position for static objects
+  let v3_tra = object.interpolationProgress !== undefined ? object.interpolatedPosArray : object.posArray;
   let v3_sca = object.scaArray;
 
   // Create the individual transform matrices
@@ -488,7 +545,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     u_worldViewProjection: wvpMat,
     u_lightWorldPosition: lightPositions,
     u_viewWorldPosition: scene.camera.posArray,
-    u_ambientLight: [0.3, 0.3, 0.3, 1.0],
+    u_ambientLight: [0.15, 0.15, 0.15, 1.0],
     u_diffuseLight: diffuseLights,
     u_specularLight: specularLights,
     u_shininess: 32.0,
@@ -534,7 +591,8 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
 // Draw an object with its corresponding transformations
 function drawObject(gl, programInfo, object, viewProjectionMatrix) {
   // Prepare the vector for translation and scale
-  let v3_tra = object.posArray;
+  // Use interpolated position for agents, regular position for static objects
+  let v3_tra = object.interpolationProgress !== undefined ? object.interpolatedPosArray : object.posArray;
   let v3_sca = object.scaArray;
 
   /*
@@ -585,13 +643,18 @@ function drawObject(gl, programInfo, object, viewProjectionMatrix) {
 }
 
 // Function to do the actual display of the objects
-async function drawScene() {
+async function drawScene(currentTime = 0) {
   // Compute time elapsed since last frame
-  let now = Date.now();
-  let deltaTime = now - then;
+  let deltaTime = currentTime - then;
   elapsed += deltaTime;
   let fract = Math.min(1.0, elapsed / duration);
-  then = now;
+  then = currentTime;
+
+  // Update agent interpolation every frame for smooth movement
+  const deltaProgress = deltaTime / duration;
+  for (const agent of agents) {
+    agent.updateInterpolation(deltaProgress);
+  }
 
   // Clear the canvas
   gl.clearColor(0, 0, 0, 1);
@@ -616,11 +679,11 @@ async function drawScene() {
   ) {
     const light = trafficLights[i];
     trafficLightLights[i].diffuse = light.state
-      ? [0, 2.5, 0, 1]
-      : [2.5, 0, 0, 1]; // Bright green or red
+      ? [0, 0.3, 0, 1]
+      : [0.3, 0, 0, 1]; // Green or red
     trafficLightLights[i].specular = light.state
-      ? [0, 1.5, 0, 1]
-      : [1.5, 0, 0, 1];
+      ? [0, 0.2, 0, 1]
+      : [0.2, 0, 0, 1];
   }
 
   const viewProjectionMatrix = setupViewProjection(gl);
@@ -681,12 +744,17 @@ async function drawScene() {
     // Check for newly spawned cars and add them to the scene
     for (const agent of agents) {
       if (!scene.objects.includes(agent)) {
-        // New car detected, set up its visual properties
-        agent.arrays = scene.carTemplate.arrays;
-        agent.bufferInfo = scene.carTemplate.bufferInfo;
-        agent.vao = scene.carTemplate.vao;
-        agent.scale = { ...scene.carTemplate.scale };
-        agent.color = [0, 0, 1, 1]; // Blue color for cars
+        // New car detected, set up its visual properties (simple object like initial agents)
+        agent.arrays = scene.butterflyTemplate.wing.arrays;
+        agent.bufferInfo = scene.butterflyTemplate.wing.bufferInfo;
+        agent.vao = scene.butterflyTemplate.wing.vao;
+        agent.scale = { ...scene.butterflyTemplate.scale };
+        if (scene.butterflyTemplate.wing.texture) {
+          agent.texture = scene.butterflyTemplate.wing.texture;
+        }
+        agent.position.y += 0.5;
+        agent.color = [1.0, 0.8, 0.2, 1.0];
+        agent.usesLighting = true;
         scene.addObject(agent);
         console.log("Added new car to scene:", agent.id);
       }

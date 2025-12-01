@@ -49,6 +49,8 @@ import vsFlatGLSL from "../assets/shaders/vs_flat.glsl?raw";
 import fsFlatGLSL from "../assets/shaders/fs_flat.glsl?raw";
 import vsLightGLSL from "../assets/shaders/vs_multi_lights.glsl?raw";
 import fsLightGLSL from "../assets/shaders/fs_multi_lights.glsl?raw";
+import vsLightAttenuationGLSL from "../assets/shaders/vs_multi_lights_attenuation.glsl?raw";
+import fsLightAttenuationGLSL from "../assets/shaders/fs_multi_lights_attenuation.glsl?raw";
 
 const scene = new Scene3D();
 
@@ -68,6 +70,7 @@ const settings = {
 let colorProgramInfo = undefined;
 let flatProgramInfo = undefined;
 let lightProgramInfo = undefined;
+let lightAttenuationProgramInfo = undefined;
 let gl = undefined;
 const duration = 1000; // ms
 let elapsed = 0;
@@ -88,13 +91,23 @@ async function main() {
   colorProgramInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
   flatProgramInfo = twgl.createProgramInfo(gl, [vsFlatGLSL, fsFlatGLSL]);
   lightProgramInfo = twgl.createProgramInfo(gl, [vsLightGLSL, fsLightGLSL]);
+  lightAttenuationProgramInfo = twgl.createProgramInfo(gl, [
+    vsLightAttenuationGLSL,
+    fsLightAttenuationGLSL,
+  ]);
 
   // Check if shaders compiled successfully
-  if (!colorProgramInfo || !flatProgramInfo || !lightProgramInfo) {
+  if (
+    !colorProgramInfo ||
+    !flatProgramInfo ||
+    !lightProgramInfo ||
+    !lightAttenuationProgramInfo
+  ) {
     console.error("Failed to create shader programs");
     console.error("colorProgramInfo:", colorProgramInfo);
     console.error("flatProgramInfo:", flatProgramInfo);
     console.error("lightProgramInfo:", lightProgramInfo);
+    console.error("lightAttenuationProgramInfo:", lightAttenuationProgramInfo);
     return;
   }
 
@@ -149,61 +162,34 @@ async function setupObjects(scene, gl, programInfo) {
   const flatCube = new Object3D(-2);
   flatCube.prepareVAO(gl, flatProgramInfo);
 
-  // Background - skyblock
-  // const bground = await createModelObject(gl, lightProgramInfo, "skybox.obj");
-  // bground.arrays = litCube.arrays;
-  // bground.bufferInfo = litCube.bufferInfo;
-  // bground.vao = litCube.vao;
-  // bground.scale = { x: 50, y: 0.1, z: 50 };
+  // FLOOR - Large green ground plane
+  const floor = new Object3D("floor");
+  floor.prepareVAO(gl, flatProgramInfo);
+  floor.position.y = 0;
+  floor.scale = { x: 50, y: 0.1, z: 50 }; // Large and flat
+  floor.color = [0.2, 0.6, 0.2, 1.0]; // Green color
+  floor.usesLighting = false;
+  floor.usesFlatShader = true;
+  scene.addObject(floor);
+  console.log("Floor created successfully!");
 
-  // GROUND - Flat cube with texture
-  const ground = await createModelObject(
-    gl,
-    lightProgramInfo,
-    "floor_grass.obj",
-    "floor_grass.mtl"
-  );
-  ground.position.y += 5;
-  ground.arrays = litCube.arrays;
-  ground.bufferInfo = litCube.bufferInfo;
-  ground.vao = litCube.vao;
-  ground.scale = { x: 1, y: 1, z: 1 };
-  ground.usesLighting = true;
-
-  // Load and apply texture to the ground
+  // SKYBOX - Large blue sky using skybox.obj model
   try {
-    const textureImage = await loadImage("/assets/models/grass_texture.png");
-    ground.texture = createTexture(gl, textureImage);
-    console.log("Ground texture loaded successfully!");
+    console.log("Loading skybox model...");
+    const skybox = await createModelObject(gl, flatProgramInfo, "skybox.obj");
+    skybox.position.x = 14; // Center of 28x28 map
+    skybox.position.y = 0;
+    skybox.position.z = 14; // Center of 28x28 map
+    skybox.scale = { x: 3, y: 3, z: 3 }; // Model is already large
+    skybox.color = [0.53, 0.81, 0.92, 1.0]; // Sky blue color
+    skybox.usesLighting = false;
+    skybox.usesFlatShader = true; // Use flat shader for uniform color
+    skybox.isSkybox = true; // Mark as skybox for special rendering
+    scene.addObject(skybox);
+    console.log("Skybox loaded successfully!");
   } catch (error) {
-    console.error("Failed to load ground texture:", error);
-    ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
+    console.error("Failed to load skybox model:", error);
   }
-
-  scene.addObject(ground);
-  const skybox = await createModelObject(
-    gl,
-    lightProgramInfo,
-    "skybox.obj",
-    "skybox.mtl"
-  );
-  skybox.position.y += 5;
-  skybox.arrays = litCube.arrays;
-  skybox.bufferInfo = litCube.bufferInfo;
-  skybox.vao = litCube.vao;
-  skybox.scale = { x: 50, y: 50, z: 50 };
-  skybox.usesLighting = true;
-
-  // Load and apply texture to the skybox
-  try {
-    skybox.texture = createTexture(gl, textureImage);
-    console.log("skybox texture loaded successfully!");
-  } catch (error) {
-    console.error("Failed to load skybox texture:", error);
-    skybox.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
-  }
-
-  scene.addObject(skybox);
 
   // AGENTS (Butterflies) - Using butterfly 3D model
   let butterflyModels = { leftWing: null, rightWing: null, body: null };
@@ -420,12 +406,12 @@ async function setupObjects(scene, gl, programInfo) {
     const flowerCapModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "flower_cap.obj"
+      "flower/flower_cap.obj"
     );
     const flowerStemModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "flower.obj"
+      "flower/flower.obj"
     );
 
     console.log("Flower models loaded successfully!");
@@ -442,7 +428,7 @@ async function setupObjects(scene, gl, programInfo) {
       destination.arrays = flowerStemModel.arrays;
       destination.bufferInfo = flowerStemModel.bufferInfo;
       destination.vao = flowerStemModel.vao;
-      destination.scale = { x: 1, y: 1, z: 1 };
+      destination.scale = { x: 0.3, y: 0.3, z: 0.3 };
       destination.color = randomGreen; // Random green shade
       destination.usesLighting = true;
       scene.addObject(destination);
@@ -456,7 +442,7 @@ async function setupObjects(scene, gl, programInfo) {
           destination.position.z,
         ],
         [0, 0, 0],
-        [1, 1, 1],
+        [0.3, 0.3, 0.3],
         [Math.random(), Math.random(), Math.random(), 1.0] // Random color
       );
       cap.arrays = flowerCapModel.arrays;
@@ -482,64 +468,18 @@ async function setupObjects(scene, gl, programInfo) {
     }
   }
 
-  /*
-  // ALTERNATIVE: Use simple cubes for obstacles
-  for (const agent of obstacles) {
-    agent.arrays = baseCube.arrays;
-    agent.bufferInfo = baseCube.bufferInfo;
-    agent.vao = baseCube.vao;
-    agent.scale = { x: 0.5, y: 0.5, z: 0.5 };
-    agent.color = [0.7, 0.7, 0.7, 1.0];
-    scene.addObject(agent);
-  }
-  */
-
-  // TRAFFIC LIGHTS - Using 3D traffic light model
-  // try {
-  //   console.log('Loading traffic light model...');
-  //   const trafficLightModel = await createModelObject(
-  //     gl,
-  //     programInfo,
-  //     'trafficLight/trfcLight.obj',
-  //     'trafficLight/trfcLight.mtl'
-  //   );
-
-  //   console.log('Traffic light model loaded successfully!');
-
-  //   for (const light of trafficLights) {
-  //     light.arrays = trafficLightModel.arrays;
-  //     light.bufferInfo = trafficLightModel.bufferInfo;
-  //     light.vao = trafficLightModel.vao;
-  //     light.scale = { x: 0.5, y: 0.8, z: 0.5 };
-  //     // Adjust Y position to place traffic light on the ground
-  //     light.position.y = 1;  // Set to ground level
-  //     scene.addObject(light);
-  //   }
-  // } catch (error) {
-  //   console.error('Failed to load traffic light model, falling back to colored cubes:', error);
-  //   // Fallback to flat shader cubes with dynamic colors
-  //   for (const light of trafficLights) {
-  //     light.arrays = flatCube.arrays;
-  //     light.bufferInfo = flatCube.bufferInfo;
-  //     light.vao = flatCube.vao;
-  //     light.scale = { x: 0.3, y: 1.2, z: 0.3 };
-  //     light.usesFlatShader = true;
-  //     scene.addObject(light);
-  //   }
-  // }
-
   // TRAFFIC LIGHTS - Using mushroom models with state-based colors
   try {
     console.log("Loading mushroom models for traffic lights...");
     const mushroomCapModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "mushroom_cap.obj"
+      "mushroom/mushroom_cap.obj"
     );
     const mushroomLogModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "mushroom_log.obj"
+      "mushroom/mushroom_log.obj"
     );
 
     console.log("Mushroom models loaded successfully!");
@@ -555,6 +495,7 @@ async function setupObjects(scene, gl, programInfo) {
       light.scale = { x: 1, y: 1, z: 1 };
       light.color = [1.0, 1.0, 1.0, 1.0]; // White color
       light.usesLighting = true;
+      light.usesAttenuation = true; // Mark for attenuation shader
       scene.addObject(light);
 
       // Create the mushroom cap with color based on traffic light state
@@ -570,6 +511,7 @@ async function setupObjects(scene, gl, programInfo) {
       cap.bufferInfo = mushroomCapModel.bufferInfo;
       cap.vao = mushroomCapModel.vao;
       cap.usesLighting = true;
+      cap.usesAttenuation = true; // Mark for attenuation shader
       scene.addObject(cap);
 
       // Store reference to cap for updating color
@@ -666,6 +608,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     specularLights.push(0, 0, 0, 1);
   }
 
+  // Add directional light from side-top (simulates sun without attenuation)
+  const directionalLightPos = [30, 50, 20]; // Side-top position
+  lightPositions.push(...directionalLightPos);
+  diffuseLights.push(0.8, 0.75, 0.65, 1.0); // Warm white light
+  specularLights.push(0.6, 0.55, 0.5, 1.0); // Warm specular
+
   // Model uniforms
   let objectUniforms = {
     u_world: transforms,
@@ -673,7 +621,126 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     u_worldViewProjection: wvpMat,
     u_lightWorldPosition: lightPositions,
     u_viewWorldPosition: scene.camera.posArray,
-    u_ambientLight: [0.15, 0.15, 0.15, 1.0],
+    u_ambientLight: [0.3, 0.3, 0.3, 1.0], // Lower ambient for better shadow contrast
+    u_diffuseLight: diffuseLights,
+    u_specularLight: specularLights,
+    u_shininess: 32.0,
+    u_constant: 1.0,
+    u_linear: 0.09,
+    u_quadratic: 0.032,
+    u_color: object.color || [1, 1, 1, 1],
+    u_useTexture: object.texture ? true : false,
+  };
+
+  twgl.setUniforms(programInfo, objectUniforms);
+
+  // Handle textures
+  if (object.texture) {
+    // Single texture mode
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, object.texture);
+  } else {
+    // Create a simple 1x1 white texture as fallback
+    if (!gl.defaultTexture) {
+      gl.defaultTexture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, gl.defaultTexture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        new Uint8Array([255, 255, 255, 255])
+      );
+    } else {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, gl.defaultTexture);
+    }
+  }
+
+  gl.bindVertexArray(object.vao);
+  twgl.drawBufferInfo(gl, object.bufferInfo);
+}
+
+// Draw an object with lighting and attenuation (for traffic light glow effect)
+function drawObjectWithAttenuation(
+  gl,
+  programInfo,
+  object,
+  viewProjectionMatrix
+) {
+  // Prepare the vector for translation and scale
+  // Use interpolated position for agents, regular position for static objects
+  let v3_tra =
+    object.interpolationProgress !== undefined
+      ? object.interpolatedPosArray
+      : object.posArray;
+  let v3_sca = object.scaArray;
+
+  // Create the individual transform matrices
+  const scaMat = M4.scale(v3_sca);
+  const rotXMat = M4.rotationX(object.rotRad.x);
+  const rotYMat = M4.rotationY(object.rotRad.y);
+  const rotZMat = M4.rotationZ(object.rotRad.z);
+  const traMat = M4.translation(v3_tra);
+
+  // Create the composite matrix with all transformations
+  let transforms = M4.identity();
+  transforms = M4.multiply(scaMat, transforms);
+  transforms = M4.multiply(rotXMat, transforms);
+  transforms = M4.multiply(rotYMat, transforms);
+  transforms = M4.multiply(rotZMat, transforms);
+  transforms = M4.multiply(traMat, transforms);
+
+  object.matrix = transforms;
+
+  // Apply the projection to the final matrix
+  const wvpMat = M4.multiply(viewProjectionMatrix, transforms);
+
+  // Calculate world inverse transpose for normal transformation
+  const worldInverseTranspose = M4.transpose(M4.inverse(transforms));
+
+  // Prepare light arrays (shader expects arrays)
+  const lightPositions = [];
+  const diffuseLights = [];
+  const specularLights = [];
+
+  // Limit to maximum 30 lights (shader's NUM_LIGHTS constant)
+  const MAX_LIGHTS = 30;
+  const numLights = Math.min(trafficLightLights.length, MAX_LIGHTS);
+
+  // Fill with traffic light data using Light3D properties
+  for (let i = 0; i < numLights; i++) {
+    lightPositions.push(...trafficLightLights[i].posArray);
+    diffuseLights.push(...trafficLightLights[i].diffuse);
+    specularLights.push(...trafficLightLights[i].specular);
+  }
+
+  // Fill remaining slots with dummy lights (no contribution)
+  for (let i = numLights; i < MAX_LIGHTS; i++) {
+    lightPositions.push(0, 100, 0); // Far away
+    diffuseLights.push(0, 0, 0, 1);
+    specularLights.push(0, 0, 0, 1);
+  }
+
+  // Add directional light from side-top (simulates sun without attenuation)
+  const directionalLightPos = [30, 50, 20]; // Side-top position
+  lightPositions.push(...directionalLightPos);
+  diffuseLights.push(0.8, 0.75, 0.65, 1.0); // Warm white light
+  specularLights.push(0.6, 0.55, 0.5, 1.0); // Warm specular
+
+  // Model uniforms
+  let objectUniforms = {
+    u_world: transforms,
+    u_worldInverseTransform: worldInverseTranspose,
+    u_worldViewProjection: wvpMat,
+    u_lightWorldPosition: lightPositions,
+    u_viewWorldPosition: scene.camera.posArray,
+    u_ambientLight: [0.3, 0.3, 0.3, 1.0], // Lower ambient for better shadow contrast
     u_diffuseLight: diffuseLights,
     u_specularLight: specularLights,
     u_shininess: 32.0,
@@ -828,14 +895,27 @@ async function drawScene(currentTime = 0) {
 
   const viewProjectionMatrix = setupViewProjection(gl);
 
-  // Draw objects with lighting (trees, buildings, floor)
+  // Draw objects with lighting (trees, buildings, floor) - warm global light, no attenuation
   if (trafficLightLights.length > 0) {
     gl.useProgram(lightProgramInfo.program);
     for (let object of scene.objects) {
-      if (object.usesLighting) {
+      if (object.usesLighting && !object.usesAttenuation) {
         drawObjectWithLighting(
           gl,
           lightProgramInfo,
+          object,
+          viewProjectionMatrix
+        );
+      }
+    }
+
+    // Draw traffic lights with attenuation shader for localized glow
+    gl.useProgram(lightAttenuationProgramInfo.program);
+    for (let object of scene.objects) {
+      if (object.usesAttenuation) {
+        drawObjectWithAttenuation(
+          gl,
+          lightAttenuationProgramInfo,
           object,
           viewProjectionMatrix
         );
@@ -851,11 +931,24 @@ async function drawScene(currentTime = 0) {
     }
   }
 
-  // Draw the objects with flat shader (traffic lights)
+  // Draw the objects with flat shader (traffic lights and skybox)
   gl.useProgram(flatProgramInfo.program);
   for (let object of scene.objects) {
     if (object.usesFlatShader) {
-      drawObject(gl, flatProgramInfo, object, viewProjectionMatrix, fract);
+      if (object.isSkybox) {
+        // Make skybox follow camera position
+        object.position.x = scene.camera.position.x;
+        object.position.y = scene.camera.position.y;
+        object.position.z = scene.camera.position.z;
+
+        //gl.disable(gl.CULL_FACE); // Disable face culling for skybox
+        gl.depthMask(false); // Don't write to depth buffer
+        drawObject(gl, flatProgramInfo, object, viewProjectionMatrix, fract);
+        gl.depthMask(true); // Re-enable depth writing
+        gl.enable(gl.CULL_FACE); // Re-enable for other objects
+      } else {
+        drawObject(gl, flatProgramInfo, object, viewProjectionMatrix, fract);
+      }
     }
   }
 

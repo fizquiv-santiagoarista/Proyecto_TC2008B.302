@@ -39,13 +39,8 @@ void main() {
     for (int i=0; i<NUM_LIGHTS; i++) {
         // Calculate surface to light direction in fragment shader
         vec3 surfaceToLight = u_lightWorldPosition[i] - v_surfaceWorldPosition;
-        
-        // Calculate distance squared for attenuation (optimization - avoids sqrt)
-        float distanceSquared = dot(surfaceToLight, surfaceToLight);
-        // Simple inverse square falloff with a small constant to avoid division by zero
-        float attenuation = 1.0 / (1.0 + 0.05 * distanceSquared);
-        
         vec3 surfToLigthDirection = normalize(surfaceToLight);
+        
         // Finding the reflection vector
         // https://en.wikipedia.org/wiki/Phong_reflection_model
         vec3 reflectionVector = (2.0 * dot(surfToLigthDirection, normal)
@@ -58,8 +53,8 @@ void main() {
             specular = pow(max(specular_dot, 0.0), u_shininess);
         }
 
-        diffuseColor += (light * color * u_diffuseLight[i]) * attenuation;
-        specularColor += (specular * color * u_specularLight[i]) * attenuation;
+        diffuseColor += light * color * u_diffuseLight[i];
+        specularColor += specular * color * u_specularLight[i];
     }
 
     // Use the color of the texture on the object

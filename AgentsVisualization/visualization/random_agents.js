@@ -294,6 +294,16 @@ async function setupObjects(scene, gl, programInfo) {
       lightProgramInfo,
       "tree2/tree2_leaves.obj"
     );
+    const tree3LogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree3/tree3_log.obj"
+    );
+    const tree3LeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree3/tree3_leaves.obj"
+    );
     const rockModel = await createModelObject(gl, lightProgramInfo, "rock.obj");
 
     console.log("Tree and rock models loaded successfully!");
@@ -308,13 +318,13 @@ async function setupObjects(scene, gl, programInfo) {
       [0.08, 0.5, 0.3, 1.0], // Teal-green
     ];
 
-    // For each obstacle, alternate between trees and rocks
+    // For each obstacle, alternate between tree2, tree3, and rocks
     for (let i = 0; i < obstacles.length; i++) {
       const obstacle = obstacles[i];
-      const isTree = i % 2 === 0; // Even indices = trees, odd indices = rocks
+      const obstacleType = i % 3; // 0 = tree2, 1 = tree3, 2 = rock
 
-      if (isTree) {
-        // Set up the log (brown) - using the existing obstacle object
+      if (obstacleType === 0) {
+        // Tree2 - Set up the log (brown)
         obstacle.arrays = treeLogModel.arrays;
         obstacle.bufferInfo = treeLogModel.bufferInfo;
         obstacle.vao = treeLogModel.vao;
@@ -328,7 +338,7 @@ async function setupObjects(scene, gl, programInfo) {
         const randomGreen =
           greenShades[Math.floor(Math.random() * greenShades.length)];
 
-        // Create the leaves (random green shade) as a NEW separate object at the same position
+        // Create the leaves
         const leaves = new Object3D(
           `${obstacle.id}_leaves`,
           [obstacle.position.x, obstacle.position.y, obstacle.position.z],
@@ -339,6 +349,34 @@ async function setupObjects(scene, gl, programInfo) {
         leaves.arrays = treeLeavesModel.arrays;
         leaves.bufferInfo = treeLeavesModel.bufferInfo;
         leaves.vao = treeLeavesModel.vao;
+        leaves.usesLighting = true;
+        scene.addObject(leaves);
+      } else if (obstacleType === 1) {
+        // Tree3 - Set up the log (brown)
+        obstacle.arrays = tree3LogModel.arrays;
+        obstacle.bufferInfo = tree3LogModel.bufferInfo;
+        obstacle.vao = tree3LogModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 0.8, y: 0.8, z: 0.8 };
+        obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
+        obstacle.usesLighting = true;
+        scene.addObject(obstacle);
+
+        // Pick a random green shade for the leaves
+        const randomGreen =
+          greenShades[Math.floor(Math.random() * greenShades.length)];
+
+        // Create the leaves
+        const leaves = new Object3D(
+          `${obstacle.id}_leaves`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [0.8, 0.8, 0.8],
+          randomGreen
+        );
+        leaves.arrays = tree3LeavesModel.arrays;
+        leaves.bufferInfo = tree3LeavesModel.bufferInfo;
+        leaves.vao = tree3LeavesModel.vao;
         leaves.usesLighting = true;
         scene.addObject(leaves);
       } else {
@@ -367,35 +405,49 @@ async function setupObjects(scene, gl, programInfo) {
     }
   }
 
+  // Define different shades of green for flower stems (reuse from trees)
+  const greenShades = [
+    [0.05, 0.4, 0.05, 1.0], // Very dark green
+    [0.15, 0.6, 0.15, 1.0], // Medium green
+    [0.25, 0.75, 0.25, 1.0], // Bright green
+    [0.1, 0.55, 0.2, 1.0], // Forest green with more blue
+    [0.2, 0.65, 0.1, 1.0], // Yellow-green
+    [0.08, 0.5, 0.3, 1.0], // Teal-green
+  ];
+
   try {
-    console.log("Loading mushroom models...");
-    const mushroomCapModel = await createModelObject(
+    console.log("Loading flower models...");
+    const flowerCapModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "mushroom_cap.obj"
+      "flower_cap.obj"
     );
-    const mushroomLogModel = await createModelObject(
+    const flowerStemModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "mushroom_log.obj"
+      "flower.obj"
     );
 
-    console.log("Mushroom models loaded successfully!");
+    console.log("Flower models loaded successfully!");
 
     for (let i = 0; i < destinations.length; i++) {
       const destination = destinations[i];
-      console.log(`loading mushroom at ${destination.position}`);
+      console.log(`loading flower at ${destination.position}`);
 
-      // Set up the mushroom log (white) - using the existing destination object
-      destination.arrays = mushroomLogModel.arrays;
-      destination.bufferInfo = mushroomLogModel.bufferInfo;
-      destination.vao = mushroomLogModel.vao;
+      // Pick a random green shade for the flower stem
+      const randomGreen =
+        greenShades[Math.floor(Math.random() * greenShades.length)];
+
+      // Set up the flower stem (random green) - using the existing destination object
+      destination.arrays = flowerStemModel.arrays;
+      destination.bufferInfo = flowerStemModel.bufferInfo;
+      destination.vao = flowerStemModel.vao;
       destination.scale = { x: 1, y: 1, z: 1 };
-      destination.color = [1.0, 1.0, 1.0, 1.0]; // White color
+      destination.color = randomGreen; // Random green shade
       destination.usesLighting = true;
       scene.addObject(destination);
 
-      // Create the mushroom cap (random color) as a NEW separate object at the same position
+      // Create the flower cap (random color) as a NEW separate object at the same position
       const cap = new Object3D(
         `${destination.id}_cap`,
         [
@@ -407,9 +459,9 @@ async function setupObjects(scene, gl, programInfo) {
         [1, 1, 1],
         [Math.random(), Math.random(), Math.random(), 1.0] // Random color
       );
-      cap.arrays = mushroomCapModel.arrays;
-      cap.bufferInfo = mushroomCapModel.bufferInfo;
-      cap.vao = mushroomCapModel.vao;
+      cap.arrays = flowerCapModel.arrays;
+      cap.bufferInfo = flowerCapModel.bufferInfo;
+      cap.vao = flowerCapModel.vao;
       cap.usesLighting = true;
       scene.addObject(cap);
     }
@@ -476,35 +528,57 @@ async function setupObjects(scene, gl, programInfo) {
   //   }
   // }
 
-  // TRAFFIC LIGHTS - Using anemone flower models with dynamic colors
+  // TRAFFIC LIGHTS - Using mushroom models with state-based colors
   try {
-    console.log("Loading anemone flower model...");
-    const flowerModel = await createModelObject(
+    console.log("Loading mushroom models for traffic lights...");
+    const mushroomCapModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "anemone_flower_v1_L2.123c1a49de8d-31b0-4a7e-a943-aec52dc74b75/12973_anemone_flower_v1_l2.obj"
+      "mushroom_cap.obj"
+    );
+    const mushroomLogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "mushroom_log.obj"
     );
 
-    console.log("Anemone flower model loaded successfully!");
+    console.log("Mushroom models loaded successfully!");
 
     for (const light of trafficLights) {
-      light.arrays = flowerModel.arrays;
-      light.bufferInfo = flowerModel.bufferInfo;
-      light.vao = flowerModel.vao;
-      light.position.y = 1;
-      light.scale = { x: 0.05, y: 0.05, z: 0.05 };
-      light.rotRad = {
-        x: (270 * Math.PI) / 180,
-        y: (0 * Math.PI) / 180,
-        z: 0,
-      }; // 270° rotation on Y axis
+      // Set up the mushroom log (white) - using the existing light object
+      light.arrays = mushroomLogModel.arrays;
+      light.bufferInfo = mushroomLogModel.bufferInfo;
+      light.vao = mushroomLogModel.vao;
+      light.position.y = 1; // Set Y to 1 directly
+      delete light.interpolationProgress; // Remove interpolation (traffic lights are static)
+      delete light.oldPosition;
+      light.scale = { x: 1, y: 1, z: 1 };
+      light.color = [1.0, 1.0, 1.0, 1.0]; // White color
       light.usesLighting = true;
       scene.addObject(light);
+
+      // Create the mushroom cap with color based on traffic light state
+      const capColor = light.state ? [0, 0.8, 0, 1.0] : [0.8, 0, 0, 1.0]; // Green or red
+      const cap = new Object3D(
+        `${light.id}_cap`,
+        [light.position.x, 1, light.position.z], // Same Y as log
+        [0, 0, 0],
+        [1, 1, 1],
+        capColor
+      );
+      cap.arrays = mushroomCapModel.arrays;
+      cap.bufferInfo = mushroomCapModel.bufferInfo;
+      cap.vao = mushroomCapModel.vao;
+      cap.usesLighting = true;
+      scene.addObject(cap);
+
+      // Store reference to cap for updating color
+      light.mushroomCap = cap;
 
       // Create Light3D object for this traffic light
       const pointLight = new Light3D(
         `trafficLight_${trafficLightLights.length}`,
-        [light.position.x, light.position.y + 0.5, light.position.z], // position
+        [light.position.x, 1, light.position.z], // position at cap level
         [0.1, 0.1, 0.1, 1.0], // ambient
         light.state ? [0, 0.3, 0, 1] : [0.3, 0, 0, 1], // diffuse - green or red
         light.state ? [0, 0.2, 0, 1] : [0.2, 0, 0, 1] // specular
@@ -743,6 +817,13 @@ async function drawScene(currentTime = 0) {
     trafficLightLights[i].specular = light.state
       ? [0, 0.2, 0, 1]
       : [0.2, 0, 0, 1];
+
+    // Update mushroom cap color to match traffic light state
+    if (light.mushroomCap) {
+      light.mushroomCap.color = light.state
+        ? [0, 0.8, 0, 1.0]
+        : [0.8, 0, 0, 1.0]; // Green or red
+    }
   }
 
   const viewProjectionMatrix = setupViewProjection(gl);

@@ -18,6 +18,13 @@ const agents = [];
 const obstacles = [];
 const trafficLights = [];
 
+// Initialize car statistics object
+const carStats = {
+    totalSpawned: 0,
+    currentActive: 0,
+    reachedDestination: 0
+};
+
 // Define the data object
 const initData = {
     NAgents: 4,
@@ -28,6 +35,27 @@ const initData = {
 // Function to update NAgents value
 function setNAgents(value) {
     initData.NAgents = value;
+}
+
+// Function to set spawn interval (steps between spawns)
+async function setSpawnInterval(interval) {
+    try {
+        let response = await fetch(agent_server_uri + "setSpawnInterval", {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ interval: interval })
+        });
+
+        if (response.ok) {
+            let result = await response.json();
+            console.log(result.message);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.log(error);
+        return false;
+    }
 }
 
 
@@ -202,6 +230,31 @@ async function getTrafficLights() {
 }
 
 /*
+ * Retrieves the current car statistics from the agent server.
+ */
+async function getCarStats() {
+    try {
+        // Send a GET request to the agent server to retrieve the car statistics
+        let response = await fetch(agent_server_uri + "getCarStats");
+
+        // Check if the response was successful
+        if (response.ok) {
+            // Parse the response as JSON
+            let result = await response.json();
+
+            // Update the carStats object
+            carStats.totalSpawned = result.totalSpawned;
+            carStats.currentActive = result.currentActive;
+            carStats.reachedDestination = result.reachedDestination;
+        }
+
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error);
+    }
+}
+
+/*
  * Updates the agent positions by sending a request to the agent server.
  */
 async function update() {
@@ -215,6 +268,8 @@ async function update() {
             await getAgents();
             // Retrieve the updated traffic light states
             await getTrafficLights();
+            // Retrieve the updated car statistics
+            await getCarStats();
             // Log a message indicating that the agents have been updated
             //console.log("Updated agents");
         }
@@ -225,4 +280,5 @@ async function update() {
     }
 }
 
-export { agents, obstacles, trafficLights, initAgentsModel, update, getAgents, getObstacles, getTrafficLights, setNAgents, initData };
+export { agents, obstacles, trafficLights, carStats, initAgentsModel, update, getAgents, getObstacles, getTrafficLights, getCarStats, setNAgents, setSpawnInterval, initData };
+

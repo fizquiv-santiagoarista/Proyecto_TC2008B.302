@@ -54,6 +54,45 @@ canvas {
   right: 5vw;
 }
 
+#stats-overlay {
+  position: absolute;
+  top: 15vh;
+  left: 2vw;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 220px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-weight: bold;
+  color: #60d0ff;
+}
+
+.stat-value {
+  color: #00ff88;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: right;
+}
+
 #backButton {
     margin: 10px;
 }

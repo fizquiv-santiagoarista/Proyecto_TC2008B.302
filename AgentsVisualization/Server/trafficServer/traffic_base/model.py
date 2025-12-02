@@ -28,6 +28,10 @@ class CityModel(Model):
         self.destinations = []
         self.road_cells = []
         self.obstacles = []
+        
+        # Car tracking metrics
+        self.total_cars_spawned = 0  # Total cars spawned since simulation start
+        self.total_cars_reached_destination = 0  # Total cars that reached their destination
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("city_files/2022_base.txt") as baseFile:
@@ -155,6 +159,15 @@ class CityModel(Model):
         """Advance the model by one step."""
         self.agents.shuffle_do("step")
         
+        # Print statistics every 50 steps
+        if self.steps % 50 == 0 and self.steps > 0:
+            stats = self.get_car_statistics()
+            print(f"\n=== Car Statistics (Step {self.steps}) ===")
+            print(f"Total spawned: {stats['total_spawned']}")
+            print(f"Currently active: {stats['current_active']}")
+            print(f"Reached destination: {stats['reached_destination']}")
+            print("=" * 40 + "\n")
+        
         # Spawn cars every spawn_interval steps
         if self.steps % self.spawn_interval == 0:
             if self.corner_road_cells and self.destinations:
@@ -183,3 +196,28 @@ class CityModel(Model):
                         destination = self.random.choice(self.destinations)
                     
                     car = Car(self, starting_cell, destination)
+                    self.total_cars_spawned += 1  # Increment total cars spawned
+    
+    def get_current_car_count(self):
+        """Get the current number of cars in the simulation."""
+        return sum(1 for agent in self.agents if isinstance(agent, Car))
+    
+    def increment_cars_reached_destination(self):
+        """Called by Car agent when it reaches its destination."""
+        self.total_cars_reached_destination += 1
+    
+    def get_car_statistics(self):
+        """Get all car tracking statistics."""
+        current_cars = self.get_current_car_count()
+        return {
+            "total_spawned": self.total_cars_spawned,
+            "current_active": current_cars,
+            "reached_destination": self.total_cars_reached_destination
+        }
+    
+    def set_spawn_interval(self, interval):
+        """Set the spawn interval (number of steps between spawns)."""
+        if interval > 0:
+            self.spawn_interval = interval
+            return True
+        return False

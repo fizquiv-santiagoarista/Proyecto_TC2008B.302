@@ -22,8 +22,8 @@ import { createModelObject } from '../libs/model_loader.js';
 
 // Functions and arrays for the communication with the API
 import {
-  agents, obstacles, trafficLights, initAgentsModel,
-  update, getAgents, getObstacles, getTrafficLights, setNAgents, initData
+  agents, obstacles, trafficLights, carStats, initAgentsModel,
+  update, getAgents, getObstacles, getTrafficLights, setNAgents, setSpawnInterval, initData
 } from '../libs/api_connection.js';
 
 // Define the shader code, using GLSL 3.00
@@ -342,6 +342,13 @@ function drawObject(gl, programInfo, object, viewProjectionMatrix, fract) {
   twgl.drawBufferInfo(gl, object.bufferInfo);
 }
 
+// Function to update the statistics display in the DOM
+function updateStatsDisplay() {
+  document.getElementById('stat-total').textContent = carStats.totalSpawned;
+  document.getElementById('stat-active').textContent = carStats.currentActive;
+  document.getElementById('stat-reached').textContent = carStats.reachedDestination;
+}
+
 // Function to do the actual display of the objects
 async function drawScene() {
   // Compute time elapsed since last frame
@@ -412,6 +419,7 @@ async function drawScene() {
     }
     
     await update();
+    updateStatsDisplay(); // Update the statistics display
   }
 
   requestAnimationFrame(drawScene);
@@ -440,13 +448,20 @@ function setupViewProjection(gl) {
 function setupUI() {
   const gui = new GUI();
 
+  // Set default cars per spawn to 4 (every 10 steps)
+  setNAgents(4);
+
   // Settings for car spawning
-  const spawnFolder = gui.addFolder('Car Spawning:');
-  spawnFolder.add(initData, 'NAgents', 1, 10, 1)
-      .name('Cars per spawn (every 10 steps)')
-      .onChange((value) => {
-        setNAgents(value);
-        console.log('Cars per spawn set to:', value);
+  const spawnSettings = {
+    spawnInterval: 10
+  };
+  
+  const spawnFolder = gui.addFolder('Car Spawning');
+  spawnFolder.add(spawnSettings, 'spawnInterval', 1, 50, 1)
+      .name('Steps between spawns')
+      .onChange(async (value) => {
+        await setSpawnInterval(value);
+        console.log('Spawn interval set to:', value, 'steps');
       });
   spawnFolder.open();
 

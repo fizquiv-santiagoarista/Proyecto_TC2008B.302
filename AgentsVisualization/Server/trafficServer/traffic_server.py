@@ -218,6 +218,55 @@ def updateModel():
             return jsonify({"message": "Error during step."}), 500
 
 
+@app.route('/getCarStats', methods=['GET'])
+@cross_origin()
+def getCarStats():
+    global cityModel
+    if request.method == 'GET':
+        try:
+            if cityModel is None:
+                return jsonify({"message": "Model not initialized."}), 400
+            
+            stats = cityModel.get_car_statistics()
+            return jsonify({
+                'totalSpawned': stats['total_spawned'],
+                'currentActive': stats['current_active'],
+                'reachedDestination': stats['reached_destination']
+            })
+        except Exception as e:
+            print(e)
+            return jsonify({"message": "Error getting car statistics."}), 500
+
+
+@app.route('/setSpawnInterval', methods=['POST'])
+@cross_origin()
+def setSpawnInterval():
+    global cityModel
+    if request.method == 'POST':
+        try:
+            if cityModel is None:
+                return jsonify({"message": "Model not initialized."}), 400
+            
+            data = request.json
+            interval = data.get('interval')
+            
+            if interval is None or not isinstance(interval, int):
+                return jsonify({"message": "Invalid interval value."}), 400
+            
+            success = cityModel.set_spawn_interval(interval)
+            if success:
+                return jsonify({
+                    'message': f'Spawn interval set to {interval} steps.',
+                    'interval': interval
+                })
+            else:
+                return jsonify({"message": "Interval must be greater than 0."}), 400
+                
+        except Exception as e:
+            print(e)
+            return jsonify({"message": "Error setting spawn interval."}), 500
+
+
 if __name__=='__main__':
     # Run the flask server in port 8585
     app.run(host="localhost", port=8585, debug=True)

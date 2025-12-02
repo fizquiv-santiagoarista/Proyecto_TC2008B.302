@@ -555,6 +555,10 @@ class Car(CellAgent):
         # Check if already at destination
         if self.destination and self.cell == self.destination.cell:
             self.reached_destination = True
+            
+            # Increment the model's counter for cars that reached destination
+            self.model.increment_cars_reached_destination()
+            
             # Remove car from simulation when it reaches destination
             # Remove from the cell's agent list
             if self in self.cell.agents:

@@ -28,10 +28,14 @@ class CityModel(Model):
         self.destinations = []
         self.road_cells = []
         self.obstacles = []
+        
+        # Car tracking metrics
+        self.total_cars_spawned = 0  # Total cars spawned since simulation start
+        self.total_cars_reached_destination = 0  # Total cars that reached their destination
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("city_files/2022_base.txt") as baseFile:
-            lines = baseFile.readlines()
+            lines = [line.strip() for line in baseFile.readlines()] 
             self.width = len(lines[0])
             self.height = len(lines)
 
@@ -51,9 +55,37 @@ class CityModel(Model):
 
                     elif col in ["S", "s"]:
                         # Traffic lights need to also have a Road underneath
-                        # The direction doesn't matter much since cars use their last_direction when on a traffic light
-                        # Just use a default direction
-                        Road(self, cell, "Right")
+                        # Infer the direction from the flow of traffic in the map
+                        # Check neighbors to see which direction cars would be coming FROM
+                        traffic_light_direction = None
+                        
+                        # Check each direction and see if there's a road pointing TO this cell
+                        # Left neighbor (c-1): if it has '>', it points right (to this cell)
+                        if c > 0 and lines[r][c-1] == '>':
+                            traffic_light_direction = "Right"
+                        # Right neighbor (c+1): if it has '<', it points left (to this cell)
+                        elif c < len(lines[r])-1 and lines[r][c+1] == '<':
+                            traffic_light_direction = "Left"
+                        # Top neighbor (r-1): if it has 'v', it points down (to this cell)
+                        elif r > 0 and lines[r-1][c] == 'v':
+                            traffic_light_direction = "Down"
+                        # Bottom neighbor (r+1): if it has '^', it points up (to this cell)
+                        elif r < len(lines)-1 and lines[r+1][c] == '^':
+                            traffic_light_direction = "Up"
+                        # If still not found, check same-direction neighbors (parallel traffic)
+                        elif c > 0 and lines[r][c-1] in ['<', 'v', '^']:
+                            traffic_light_direction = dataDictionary[lines[r][c-1]]
+                        elif c < len(lines[r])-1 and lines[r][c+1] in ['>', 'v', '^']:
+                            traffic_light_direction = dataDictionary[lines[r][c+1]]
+                        elif r > 0 and lines[r-1][c] in ['<', '>', 'v']:
+                            traffic_light_direction = dataDictionary[lines[r-1][c]]
+                        elif r < len(lines)-1 and lines[r+1][c] in ['<', '>', '^']:
+                            traffic_light_direction = dataDictionary[lines[r+1][c]]
+                        else:
+                            # Default fallback
+                            traffic_light_direction = "Right"
+                        
+                        Road(self, cell, traffic_light_direction)
                         self.road_cells.append(cell)
                         
                         # Then create the traffic light on top
@@ -127,6 +159,15 @@ class CityModel(Model):
         """Advance the model by one step."""
         self.agents.shuffle_do("step")
         
+        # Print statistics every 50 steps
+        if self.steps % 50 == 0 and self.steps > 0:
+            stats = self.get_car_statistics()
+            print(f"\n=== Car Statistics (Step {self.steps}) ===")
+            print(f"Total spawned: {stats['total_spawned']}")
+            print(f"Currently active: {stats['current_active']}")
+            print(f"Reached destination: {stats['reached_destination']}")
+            print("=" * 40 + "\n")
+        
         # Spawn cars every spawn_interval steps
         if self.steps % self.spawn_interval == 0:
             if self.corner_road_cells and self.destinations:
@@ -135,6 +176,48 @@ class CityModel(Model):
                     # Select a corner to spawn the car (cycle through corners)
                     starting_cell = self.corner_road_cells[i % len(self.corner_road_cells)]
                     
+                    # Check if the starting cell is already occupied by a car
+                    cell_has_car = any(isinstance(agent, Car) for agent in starting_cell.agents)
+                    if cell_has_car:
+                        # Skip spawning if cell is occupied to avoid collisions
+                        continue
+                    
                     # Assign a random destination to the car
-                    destination = self.random.choice(self.destinations)
+                    # Avoid assigning destinations that are too close to the starting point
+                    # This helps distribute traffic better across the map
+                    available_destinations = [d for d in self.destinations 
+                                             if abs(d.cell.coordinate[0] - starting_cell.coordinate[0]) + 
+                                                abs(d.cell.coordinate[1] - starting_cell.coordinate[1]) > 5]
+                    
+                    if available_destinations:
+                        destination = self.random.choice(available_destinations)
+                    else:
+                        # If no distant destinations, use any destination
+                        destination = self.random.choice(self.destinations)
+                    
                     car = Car(self, starting_cell, destination)
+                    self.total_cars_spawned += 1  # Increment total cars spawned
+    
+    def get_current_car_count(self):
+        """Get the current number of cars in the simulation."""
+        return sum(1 for agent in self.agents if isinstance(agent, Car))
+    
+    def increment_cars_reached_destination(self):
+        """Called by Car agent when it reaches its destination."""
+        self.total_cars_reached_destination += 1
+    
+    def get_car_statistics(self):
+        """Get all car tracking statistics."""
+        current_cars = self.get_current_car_count()
+        return {
+            "total_spawned": self.total_cars_spawned,
+            "current_active": current_cars,
+            "reached_destination": self.total_cars_reached_destination
+        }
+    
+    def set_spawn_interval(self, interval):
+        """Set the spawn interval (number of steps between spawns)."""
+        if interval > 0:
+            self.spawn_interval = interval
+            return True
+        return False

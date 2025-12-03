@@ -16,12 +16,6 @@ import { Scene3D } from "../libs/scene3d";
 import { Object3D } from "../libs/object3d";
 import { Camera3D } from "../libs/camera3d";
 import { Light3D } from "../libs/light3d.js";
-// import vsGLSL from "../assets/shaders/vs_color.glsl?raw";
-// import fsGLSL from "../assets/shaders/fs_color.glsl?raw";
-// import vsFlatGLSL from "../assets/shaders/vs_flat.glsl?raw";
-// import fsFlatGLSL from "../assets/shaders/fs_flat.glsl?raw";
-// import vsLightGLSL from "../assets/shaders/vs_multi_lights_attenuation.glsl?raw";
-// import fsLightGLSL from "../assets/shaders/fs_multi_lights_attenuation.glsl?raw";
 
 // Model loader for OBJ files
 import { createModelObject } from "../libs/model_loader.js";
@@ -68,7 +62,6 @@ const settings = {
 let colorProgramInfo = undefined;
 let flatProgramInfo = undefined;
 let lightProgramInfo = undefined;
-let lightAttenuationProgramInfo = undefined;
 let gl = undefined;
 const duration = 1000; // ms
 let elapsed = 0;
@@ -157,6 +150,7 @@ async function setupObjects(scene, gl, programInfo) {
   ground.position.x = 12;
   ground.position.z = 12;
   ground.usesLighting = true;
+  ground.isFloor = true; // Mark as floor for special lighting
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
   // const textureImage = await loadImage("/assets/models/blue.png");
   // ground.texture = createTexture(gl, textureImage);
@@ -178,8 +172,7 @@ async function setupObjects(scene, gl, programInfo) {
     [0.18, 0.58, 0.1, 1.0], // Yellow-green
   ];
 
-  // Place 150-200 random grass patches across the map
-  const numGrassPatches = 350 + Math.floor(Math.random() * 51); // Random between 150-200
+  const numGrassPatches = 1000 + Math.floor(Math.random() * 51); // Random between 150-200
 
   for (let i = 0; i < numGrassPatches; i++) {
     // Random position within the ground bounds
@@ -191,9 +184,6 @@ async function setupObjects(scene, gl, programInfo) {
     const randomGreen =
       grassGreenShades[Math.floor(Math.random() * grassGreenShades.length)];
 
-    // Random scale variation (0.8 to 1.2)
-    const randomScale = 0.8 + Math.random() * 0.4;
-
     // Random rotation around Y axis for variety
     const randomRotation = Math.random() * Math.PI * 2;
 
@@ -201,7 +191,7 @@ async function setupObjects(scene, gl, programInfo) {
       `grass_${i}`,
       [randomX, 1, randomZ],
       [0, randomRotation, 0],
-      [randomScale, randomScale, randomScale],
+      [1, 0.5, 1],
       randomGreen
     );
     grass.arrays = grassModel.arrays;
@@ -520,8 +510,8 @@ async function setupObjects(scene, gl, programInfo) {
     const pointLight = new Light3D(
       `trafficLight_${trafficLightLights.length}`,
       [light.position.x, light.position.y + 0.5, light.position.z], // position at cap level
-      light.state ? [0.5, 0.5, 0, 1] : [0.4, 0.4, 0, 1], // diffuse - increased intensity
-      light.state ? [0.5, 0.5, 0, 1] : [0.4, 0.4, 0, 1] // specular - increased intensity
+      light.state ? [0.5, 0.3, 0, 1] : [0.3, 0.5, 0, 1], // diffuse - increased intensity
+      light.state ? [0.5, 0.3, 0, 1] : [0.3, 0.5, 0, 1] // specular - increased intensity
     );
     trafficLightLights.push(pointLight);
   }
@@ -627,6 +617,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
 
   if (object.isSkybox) {
     ambientLight = [1, 1, 1, 1.0];
+  }
+
+  if (object.isFloor) {
+    // ambientLight = [0.2, 0.2, 0.2, 1.0]; // Bright ambient for floor
+    diffuseFactor = 0.7;
+    specularFactor = 0.7;
   }
   // --------------------------------
 
@@ -785,11 +781,11 @@ async function drawScene(currentTime = 0) {
   ) {
     const light = trafficLights[i];
     trafficLightLights[i].diffuse = light.state
-      ? [0, 0.3, 0, 1]
-      : [0.3, 0, 0, 1]; // Green or red
+      ? [0.3, 0.5, 0, 1] // Green specular
+      : [0.5, 0.2, 0, 1]; // Red specular
     trafficLightLights[i].specular = light.state
-      ? [0, 0.2, 0, 1]
-      : [0.2, 0, 0, 1];
+      ? [0.3, 0.5, 0, 1] // Green specular
+      : [0.5, 0.2, 0, 1]; // Red specular
 
     // Update mushroom cap color to match traffic light state
     if (light.mushroomCap) {

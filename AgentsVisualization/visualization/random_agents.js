@@ -158,7 +158,6 @@ async function setupObjects(scene, gl, programInfo) {
   ground.scale = { x: 15, y: 1, z: 15 };
   ground.position.x = 12;
   ground.position.z = 12;
-  ground.position.y = -1;
   ground.usesLighting = true;
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
   // const textureImage = await loadImage("/assets/models/blue.png");
@@ -498,7 +497,7 @@ async function setupObjects(scene, gl, programInfo) {
       const pointLight = new Light3D(
         `trafficLight_${trafficLightLights.length}`,
         [light.position.x, light.position.y + 0.5, light.position.z], // position
-        // [0.1, 0.1, 0.1, 1.0], // ambient
+        //[0.5, 0.1, 0.1, 1.0], // ambient
         light.state ? [0, 0.3, 0, 1] : [0.3, 0, 0, 1], // diffuse - green or red
         light.state ? [0, 0.2, 0, 1] : [0.2, 0, 0, 1] // specular
       );
@@ -514,6 +513,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   let v3_tra = object.isButterfly
     ? object.interpolatedPosArray
     : object.posArray;
+  
+  // Apply Y offset for butterflies
+  if (object.isButterfly && object.yOffset !== undefined) {
+    v3_tra = [v3_tra[0], v3_tra[1] + object.yOffset, v3_tra[2]];
+  }
+  
   let v3_sca = object.scaArray;
 
   // Calculate rotation for butterflies based on movement direction
@@ -531,6 +536,11 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   if (object.isButterflyWing && object.parentButterfly) {
     // Sync position with parent butterfly
     v3_tra = object.parentButterfly.interpolatedPosArray;
+    
+    // Apply parent's Y offset
+    if (object.parentButterfly.yOffset !== undefined) {
+      v3_tra = [v3_tra[0], v3_tra[1] + object.parentButterfly.yOffset, v3_tra[2]];
+    }
 
     // Match parent butterfly's direction
     if (object.parentButterfly.direction !== undefined) {
@@ -581,13 +591,6 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     specularLights.push(...trafficLightLights[i].specular);
   }
 
-  if (trafficLightLights.length == 0) {
-    // Fill remaining slots with dummy lights (no contribution)
-    lightPositions.push(0, 100, 0); // Far away
-    diffuseLights.push(0, 0, 0, 1);
-    specularLights.push(0, 0, 0, 1);
-  }
-
   // Model uniforms
   let objectUniforms = {
     u_world: transforms,
@@ -595,7 +598,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     u_worldViewProjection: wvpMat,
     u_lightWorldPosition: lightPositions,
     u_viewWorldPosition: scene.camera.posArray,
-    u_ambientLight: [0.3, 0.3, 0.3, 1.0], // Increased so it's visible even with bright traffic lights
+    u_ambientLight: [0.3, 0.3, 0, 1.0], // Increased so it's visible even with bright traffic lights
     u_diffuseLight: diffuseLights,
     u_specularLight: specularLights,
     u_shininess: 32.0,
@@ -831,7 +834,7 @@ async function drawScene(currentTime = 0) {
           agent.bufferInfo = scene.butterflyBody.bufferInfo;
           agent.vao = scene.butterflyBody.vao;
           agent.scale = { x: 0.005, y: 0.005, z: 0.005 };
-          agent.position.y += 1;
+          agent.yOffset = 1; // Add Y offset to elevate butterfly above ground
           agent.color = [0, 0, 1, 1];
           agent.usesLighting = true;
           agent.isButterfly = true;

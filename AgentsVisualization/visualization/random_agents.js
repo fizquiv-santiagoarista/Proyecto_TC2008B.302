@@ -39,10 +39,6 @@ import {
 } from "../libs/api_connection.js";
 
 // Define the shader code, using GLSL 3.00
-import vsGLSL from "../assets/shaders/vs_color.glsl?raw";
-import fsGLSL from "../assets/shaders/fs_color.glsl?raw";
-import vsFlatGLSL from "../assets/shaders/vs_flat.glsl?raw";
-import fsFlatGLSL from "../assets/shaders/fs_flat.glsl?raw";
 import vsLightGLSL from "../assets/shaders/vs_multi_lights.glsl?raw";
 import fsLightGLSL from "../assets/shaders/fs_multi_lights.glsl?raw";
 
@@ -166,7 +162,7 @@ async function setupObjects(scene, gl) {
     [0.18, 0.58, 0.1, 1.0], // Yellow-green
   ];
 
-  const numGrassPatches = 1000 + Math.floor(Math.random() * 51); // Random between 150-200
+  const numGrassPatches = 500 + Math.floor(Math.random() * 51); // Random between 150-200
 
   for (let i = 0; i < numGrassPatches; i++) {
     // Random position within the ground bounds

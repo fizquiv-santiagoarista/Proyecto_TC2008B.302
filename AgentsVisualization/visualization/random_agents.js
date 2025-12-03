@@ -985,7 +985,6 @@ async function drawScene(currentTime = 0) {
       await update();
     }
 
-    await update();
     updateStatsDisplay(); // Update the statistics display
     requestAnimationFrame(drawScene);
   }

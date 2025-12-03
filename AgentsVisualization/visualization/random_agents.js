@@ -175,7 +175,7 @@ async function setupObjects(scene, gl, programInfo) {
     skybox.position.y = 0; // Reverted to 0
     skybox.position.z = 14;
 
-    skybox.scale = { x: 3, y: 3, z: 3 };
+    skybox.scale = { x: 8, y: 8, z: 8 };
     skybox.color = [1, 1, 1, 1.0];
     skybox.usesLighting = true; // Use lighting shader
     skybox.isSkybox = true;
@@ -399,6 +399,8 @@ async function setupObjects(scene, gl, programInfo) {
       cap.bufferInfo = flowerCapModel.bufferInfo;
       cap.vao = flowerCapModel.vao;
       cap.usesLighting = true;
+      cap.disableCulling = true;
+
       scene.addObject(cap);
     }
   } catch (error) {
@@ -500,6 +502,9 @@ async function setupObjects(scene, gl, programInfo) {
 
 // Draw an object with lighting (traffic light glow effect)
 function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
+  if (object.disableCulling) {
+    gl.disable(gl.CULL_FACE);
+  }
   // Prepare the vector for translation and scale
   // Use interpolated position for agents to enable smooth movement
   let v3_tra = object.isButterfly
@@ -588,13 +593,13 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   // --- SKYBOX LIGHTING OVERRIDE ---
-  let ambientLight = [0.3, 0.3, 0, 1.0];
+  let ambientLight = [0.1, 0.1, 0, 1.0];
   let diffuseFactor = 1.0;
   let specularFactor = 1.0;
   let shininess = 32.0;
 
   if (object.isSkybox) {
-    ambientLight = [0.8, 0.8, 0.8, 1.0];
+    ambientLight = [1, 1, 1, 1.0];
   }
   // --------------------------------
 

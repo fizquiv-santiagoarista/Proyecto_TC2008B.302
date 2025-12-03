@@ -120,9 +120,13 @@ async function setupObjects(scene, gl) {
   underground.arrays = litCube.arrays;
   underground.bufferInfo = litCube.bufferInfo;
   underground.vao = litCube.vao;
-  underground.scale = { x: 15, y: 12, z: 15 };
-  underground.position.x = 12;
-  underground.position.z = 12;
+  underground.scale = {
+    x: initData.width / 1.5,
+    y: 12,
+    z: initData.height / 1.5,
+  };
+  underground.position.x = initData.width / 1.6;
+  underground.position.z = initData.height / 1.6;
   underground.position.y = -15;
 
   underground.isUnderground = true; // Mark as underground for special lighting
@@ -136,9 +140,9 @@ async function setupObjects(scene, gl) {
   ground.arrays = litCube.arrays;
   ground.bufferInfo = litCube.bufferInfo;
   ground.vao = litCube.vao;
-  ground.scale = { x: 15, y: 2, z: 15 };
-  ground.position.x = 12;
-  ground.position.z = 12;
+  ground.scale = { x: initData.width / 1.5, y: 2, z: initData.height / 1.5 };
+  ground.position.x = initData.width / 1.6;
+  ground.position.z = initData.height / 1.6;
   ground.position.y = -1;
   ground.isFloor = true; // Mark as floor for special lighting
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color

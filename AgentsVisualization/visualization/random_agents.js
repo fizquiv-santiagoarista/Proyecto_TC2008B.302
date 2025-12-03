@@ -244,12 +244,52 @@ async function setupObjects(scene, gl, programInfo) {
       "butteryfly/right_wing.obj"
     );
 
+    // Load left wing components
+    const butterflyLeftWingBlackModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/left_wing_black.obj"
+    );
+    const butterflyLeftWingOrangeModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/left_wing_orange.obj"
+    );
+    const butterflyLeftWingWhiteModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/left_wing_white.obj"
+    );
+
+    // Load right wing components
+    const butterflyRightWingBlackModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/right_wing_black.obj"
+    );
+    const butterflyRightWingOrangeModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/right_wing_orange.obj"
+    );
+    const butterflyRightWingWhiteModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/right_wing_white.obj"
+    );
+
     console.log("Butterfly models loaded successfully!");
 
     // Store butterfly templates for later use
     scene.butterflyBody = butterflyBodyModel;
     scene.butterflyLeftWing = butterflyLeftWingModel;
     scene.butterflyRightWing = butterflyRightWingModel;
+    scene.butterflyLeftWingBlack = butterflyLeftWingBlackModel;
+    scene.butterflyLeftWingOrange = butterflyLeftWingOrangeModel;
+    scene.butterflyLeftWingWhite = butterflyLeftWingWhiteModel;
+    scene.butterflyRightWingBlack = butterflyRightWingBlackModel;
+    scene.butterflyRightWingOrange = butterflyRightWingOrangeModel;
+    scene.butterflyRightWingWhite = butterflyRightWingWhiteModel;
   } catch (error) {
     console.error(
       "Failed to load butterfly model, falling back to cubes:",
@@ -391,6 +431,19 @@ async function setupObjects(scene, gl, programInfo) {
     [0.08, 0.5, 0.3, 1.0], // Teal-green
   ];
 
+  // Define vibrant, non-green colors for flower caps
+  const flowerCapColors = [
+    [1.0, 0.1, 0.5, 1.0], // Hot pink
+    [1.0, 0.0, 1.0, 1.0], // Magenta
+    [0.5, 0.0, 1.0, 1.0], // Purple
+    [0.2, 0.3, 1.0, 1.0], // Blue
+    [1.0, 0.6, 0.0, 1.0], // Orange
+    [1.0, 0.0, 0.7, 1.0], // Pink-purple
+    [1.0, 0.4, 0.7, 1.0], // Coral
+    [0.0, 0.8, 1.0, 1.0], // Cyan
+    [0.7, 0.0, 1.0, 1.0], // Violet
+  ];
+
   try {
     console.log("Loading flower models...");
     const flowerCapModel = await createModelObject(
@@ -423,6 +476,10 @@ async function setupObjects(scene, gl, programInfo) {
       destination.usesLighting = true;
       scene.addObject(destination);
 
+      // Pick a random vibrant, non-green color for the flower cap
+      const randomCapColor =
+        flowerCapColors[Math.floor(Math.random() * flowerCapColors.length)];
+
       // Create the flower cap (random color) as a NEW separate object at the same position
       const cap = new Object3D(
         `${destination.id}_cap`,
@@ -433,13 +490,14 @@ async function setupObjects(scene, gl, programInfo) {
         ],
         [0, 0, 0],
         [0.3, 0.3, 0.3],
-        [Math.random(), Math.random(), Math.random(), 1.0] // Random color
+        randomCapColor
       );
       cap.arrays = flowerCapModel.arrays;
       cap.bufferInfo = flowerCapModel.bufferInfo;
       cap.vao = flowerCapModel.vao;
       cap.usesLighting = true;
       cap.disableCulling = true;
+      cap.isFlowerCap = true;
 
       scene.addObject(cap);
     }
@@ -609,7 +667,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     specularLights.push(...trafficLightLights[i].specular);
   }
 
-  // --- SKYBOX LIGHTING OVERRIDE ---
+  // --- CUSTOM LIGHTING OVERRIDES ---
   let ambientLight = [0.1, 0.1, 0, 1.0];
   let diffuseFactor = 1.0;
   let specularFactor = 1.0;
@@ -624,7 +682,19 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     diffuseFactor = 0.7;
     specularFactor = 0.7;
   }
-  // --------------------------------
+
+  if (object.isButterfly || object.isButterflyWing) {
+    ambientLight = [0.5, 0.5, 0.5, 1.0]; // Brighter ambient for butterflies
+    diffuseFactor = 0.9;
+    specularFactor = 0.8;
+  }
+
+  if (object.isFlowerCap) {
+    ambientLight = [0.2, 0.2, 0.2, 1.0];
+    diffuseFactor = 1.2;
+    specularFactor = 0.5;
+  }
+  // ----------------------------------
 
   // Model uniforms
   let objectUniforms = {
@@ -843,17 +913,12 @@ async function drawScene(currentTime = 0) {
           if (!stillExists) {
             console.log("Removing car from scene:", sceneObject.id);
 
-            // Remove associated wings
-            if (sceneObject.leftWing) {
-              const leftWingIndex = scene.objects.indexOf(sceneObject.leftWing);
-              if (leftWingIndex !== -1) scene.objects.splice(leftWingIndex, 1);
-            }
-            if (sceneObject.rightWing) {
-              const rightWingIndex = scene.objects.indexOf(
-                sceneObject.rightWing
-              );
-              if (rightWingIndex !== -1)
-                scene.objects.splice(rightWingIndex, 1);
+            // Remove associated wing components
+            if (sceneObject.wingComponents) {
+              for (const wingComponent of sceneObject.wingComponents) {
+                const wingIndex = scene.objects.indexOf(wingComponent);
+                if (wingIndex !== -1) scene.objects.splice(wingIndex, 1);
+              }
             }
 
             scene.objects.splice(i, 1);
@@ -862,58 +927,150 @@ async function drawScene(currentTime = 0) {
       }
 
       // Check for newly spawned cars and add them to the scene
+      // Counter for alternating colors
+      if (scene.butterflyColorIndex === undefined) {
+        scene.butterflyColorIndex = 0;
+      }
+
       for (const agent of agents) {
         if (!scene.objects.includes(agent)) {
+          // Alternate between blue and orange
+          const isBlue = scene.butterflyColorIndex % 2 === 0;
+          const bodyColor = isBlue ? [0, 0, 1, 1] : [1, 0.5, 0, 1];
+          scene.butterflyColorIndex++;
+
           // New car detected, set up its visual properties (simple object like initial agents)
           agent.arrays = scene.butterflyBody.arrays;
           agent.bufferInfo = scene.butterflyBody.bufferInfo;
           agent.vao = scene.butterflyBody.vao;
           agent.scale = { x: 0.005, y: 0.005, z: 0.005 };
           agent.yOffset = 1; // Add Y offset to elevate butterfly above ground
-          agent.color = [0, 0, 1, 1];
+          agent.color = bodyColor;
           agent.usesLighting = true;
           agent.isButterfly = true;
           agent.usesLighting = true;
           agent.direction = 0; // Initialize direction (0° = facing forward)
           scene.addObject(agent);
 
-          // Create left wing for the butterfly
-          const leftWing = new Object3D(
-            `${agent.id}_left_wing`,
-            [agent.position.x, agent.position.y, agent.position.z],
-            [0, 0, 0],
-            [0.005, 0.005, 0.005],
-            [0, 0, 1, 1]
-          );
-          leftWing.arrays = scene.butterflyLeftWing.arrays;
-          leftWing.bufferInfo = scene.butterflyLeftWing.bufferInfo;
-          leftWing.vao = scene.butterflyLeftWing.vao;
-          leftWing.usesLighting = true;
-          leftWing.isButterflyWing = true;
-          leftWing.isLeftWing = true;
-          leftWing.parentButterfly = agent;
-          leftWing.flapPhase = 0; // Animation phase
-          scene.addObject(leftWing);
-          agent.leftWing = leftWing;
+          // Wing colors based on butterfly type
+          const wingOrangeColor = isBlue ? [0, 0.3, 0.6, 1] : [1, 0.5, 0, 1];
+          const wingBlackColor = [0, 0, 0, 1];
+          const wingWhiteColor = [1, 1, 1, 1];
 
-          // Create right wing for the butterfly
-          const rightWing = new Object3D(
-            `${agent.id}_right_wing`,
+          // Create left wing components for the butterfly
+          const leftWingBlack = new Object3D(
+            `${agent.id}_left_wing_black`,
             [agent.position.x, agent.position.y, agent.position.z],
             [0, 0, 0],
             [0.005, 0.005, 0.005],
-            [0, 0, 1, 1]
+            wingBlackColor
           );
-          rightWing.arrays = scene.butterflyRightWing.arrays;
-          rightWing.bufferInfo = scene.butterflyRightWing.bufferInfo;
-          rightWing.vao = scene.butterflyRightWing.vao;
-          rightWing.usesLighting = true;
-          rightWing.isButterflyWing = true;
-          rightWing.isLeftWing = false;
-          rightWing.parentButterfly = agent;
-          rightWing.flapPhase = 0; // Animation phase
-          scene.addObject(rightWing);
-          agent.rightWing = rightWing;
+          leftWingBlack.arrays = scene.butterflyLeftWingBlack.arrays;
+          leftWingBlack.bufferInfo = scene.butterflyLeftWingBlack.bufferInfo;
+          leftWingBlack.vao = scene.butterflyLeftWingBlack.vao;
+          leftWingBlack.usesLighting = true;
+          leftWingBlack.isButterflyWing = true;
+          leftWingBlack.isLeftWing = true;
+          leftWingBlack.parentButterfly = agent;
+          leftWingBlack.flapPhase = 0;
+          scene.addObject(leftWingBlack);
+
+          const leftWingOrange = new Object3D(
+            `${agent.id}_left_wing_orange`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            wingOrangeColor
+          );
+          leftWingOrange.arrays = scene.butterflyLeftWingOrange.arrays;
+          leftWingOrange.bufferInfo = scene.butterflyLeftWingOrange.bufferInfo;
+          leftWingOrange.vao = scene.butterflyLeftWingOrange.vao;
+          leftWingOrange.usesLighting = true;
+          leftWingOrange.isButterflyWing = true;
+          leftWingOrange.isLeftWing = true;
+          leftWingOrange.parentButterfly = agent;
+          leftWingOrange.flapPhase = 0;
+          scene.addObject(leftWingOrange);
+
+          const leftWingWhite = new Object3D(
+            `${agent.id}_left_wing_white`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            wingWhiteColor
+          );
+          leftWingWhite.arrays = scene.butterflyLeftWingWhite.arrays;
+          leftWingWhite.bufferInfo = scene.butterflyLeftWingWhite.bufferInfo;
+          leftWingWhite.vao = scene.butterflyLeftWingWhite.vao;
+          leftWingWhite.usesLighting = true;
+          leftWingWhite.isButterflyWing = true;
+          leftWingWhite.isLeftWing = true;
+          leftWingWhite.parentButterfly = agent;
+          leftWingWhite.flapPhase = 0;
+          scene.addObject(leftWingWhite);
+
+          // Create right wing components for the butterfly
+          const rightWingBlack = new Object3D(
+            `${agent.id}_right_wing_black`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            wingBlackColor
+          );
+          rightWingBlack.arrays = scene.butterflyRightWingBlack.arrays;
+          rightWingBlack.bufferInfo = scene.butterflyRightWingBlack.bufferInfo;
+          rightWingBlack.vao = scene.butterflyRightWingBlack.vao;
+          rightWingBlack.usesLighting = true;
+          rightWingBlack.isButterflyWing = true;
+          rightWingBlack.isLeftWing = false;
+          rightWingBlack.parentButterfly = agent;
+          rightWingBlack.flapPhase = 0;
+          scene.addObject(rightWingBlack);
+
+          const rightWingOrange = new Object3D(
+            `${agent.id}_right_wing_orange`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            wingOrangeColor
+          );
+          rightWingOrange.arrays = scene.butterflyRightWingOrange.arrays;
+          rightWingOrange.bufferInfo =
+            scene.butterflyRightWingOrange.bufferInfo;
+          rightWingOrange.vao = scene.butterflyRightWingOrange.vao;
+          rightWingOrange.usesLighting = true;
+          rightWingOrange.isButterflyWing = true;
+          rightWingOrange.isLeftWing = false;
+          rightWingOrange.parentButterfly = agent;
+          rightWingOrange.flapPhase = 0;
+          scene.addObject(rightWingOrange);
+
+          const rightWingWhite = new Object3D(
+            `${agent.id}_right_wing_white`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            wingWhiteColor
+          );
+          rightWingWhite.arrays = scene.butterflyRightWingWhite.arrays;
+          rightWingWhite.bufferInfo = scene.butterflyRightWingWhite.bufferInfo;
+          rightWingWhite.vao = scene.butterflyRightWingWhite.vao;
+          rightWingWhite.usesLighting = true;
+          rightWingWhite.isButterflyWing = true;
+          rightWingWhite.isLeftWing = false;
+          rightWingWhite.parentButterfly = agent;
+          rightWingWhite.flapPhase = 0;
+          scene.addObject(rightWingWhite);
+
+          // Store references to all wing components
+          agent.wingComponents = [
+            leftWingBlack,
+            leftWingOrange,
+            leftWingWhite,
+            rightWingBlack,
+            rightWingOrange,
+            rightWingWhite,
+          ];
 
           console.log("Added new car to scene:", agent.id);
         }

@@ -70,7 +70,13 @@ def getAgents():
             # print(f"AGENTS: {agents}")
 
             agentPositions = [
-                {"id": str(a.unique_id), "x": coordinate[0], "y":1, "z":coordinate[1]}
+                {
+                    "id": str(a.unique_id), 
+                    "x": coordinate[0], 
+                    "y": 1, 
+                    "z": coordinate[1],
+                    "direction": a.last_direction  # Add direction for rotation
+                }
                 for (coordinate, a) in agents
             ]
             # print(f"AGENT POSITIONS: {agentPositions}")

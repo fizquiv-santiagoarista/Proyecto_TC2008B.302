@@ -158,6 +158,7 @@ async function setupObjects(scene, gl, programInfo) {
   ground.scale = { x: 15, y: 1, z: 15 };
   ground.position.x = 12;
   ground.position.z = 12;
+  ground.position.y = -1;
   ground.usesLighting = true;
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
   // const textureImage = await loadImage("/assets/models/blue.png");
@@ -182,18 +183,30 @@ async function setupObjects(scene, gl, programInfo) {
   //   console.error("Failed to load skybox model:", error);
   // }
 
-  // AGENTS (Butterflies) - Using butterfly 3D model
+  // AGENTS (Butterflies) - Using butterfly 3D model with separate wings
   try {
-    const butterflyModel = await createModelObject(
+    const butterflyBodyModel = await createModelObject(
       gl,
       lightProgramInfo,
-      "butterfly.obj"
+      "butteryfly/body.obj"
+    );
+    const butterflyLeftWingModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/left_wing.obj"
+    );
+    const butterflyRightWingModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "butteryfly/right_wing.obj"
     );
 
-    console.log("Butterfly model loaded successfully!");
+    console.log("Butterfly models loaded successfully!");
 
-    // Store butterfly template for later use
-    scene.butterfly = butterflyModel;
+    // Store butterfly templates for later use
+    scene.butterflyBody = butterflyBodyModel;
+    scene.butterflyLeftWing = butterflyLeftWingModel;
+    scene.butterflyRightWing = butterflyRightWingModel;
 
     // for (const agent of agents) {
     //   agent.arrays = butterflyModel.arrays;
@@ -497,14 +510,33 @@ async function setupObjects(scene, gl, programInfo) {
 // Draw an object with lighting (traffic light glow effect)
 function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   // Prepare the vector for translation and scale
-  let v3_tra = object.posArray;
+  // Use interpolated position for agents to enable smooth movement
+  let v3_tra = object.isButterfly
+    ? object.interpolatedPosArray
+    : object.posArray;
   let v3_sca = object.scaArray;
+
+  // Calculate rotation for butterflies based on movement direction
+
+  let rotYAngle = object.rotRad.y;
+  let rotZAngle = object.rotRad.z;
+
+  // Handle butterfly wing flapping animation
+  if (object.isButterflyWing && object.parentButterfly) {
+    // Sync position with parent butterfly
+    v3_tra = object.parentButterfly.interpolatedPosArray;
+
+    // Add flapping animation (rotate around Z axis)
+    const flapRange = Math.PI / 4; // 45 degrees flapping range
+    const flapAngle = Math.sin(object.flapPhase) * flapRange;
+    rotZAngle = object.isLeftWing ? flapAngle : -flapAngle;
+  }
 
   // Create the individual transform matrices
   const scaMat = M4.scale(v3_sca);
   const rotXMat = M4.rotationX(object.rotRad.x);
-  const rotYMat = M4.rotationY(object.rotRad.y);
-  const rotZMat = M4.rotationZ(object.rotRad.z);
+  const rotYMat = M4.rotationY(rotYAngle);
+  const rotZMat = M4.rotationZ(rotZAngle);
   const traMat = M4.translation(v3_tra);
 
   // Create the composite matrix with all transformations
@@ -651,6 +683,14 @@ async function drawScene(currentTime = 0) {
     agent.updateInterpolation(deltaProgress);
   }
 
+  // Update wing flapping animation
+  const flapSpeed = 0.01; // Speed of wing flapping
+  for (const object of scene.objects) {
+    if (object.isButterflyWing) {
+      object.flapPhase += flapSpeed * deltaTime;
+    }
+  }
+
   // Clear the canvas
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -735,6 +775,20 @@ async function drawScene(currentTime = 0) {
           );
           if (!stillExists) {
             console.log("Removing car from scene:", sceneObject.id);
+
+            // Remove associated wings
+            if (sceneObject.leftWing) {
+              const leftWingIndex = scene.objects.indexOf(sceneObject.leftWing);
+              if (leftWingIndex !== -1) scene.objects.splice(leftWingIndex, 1);
+            }
+            if (sceneObject.rightWing) {
+              const rightWingIndex = scene.objects.indexOf(
+                sceneObject.rightWing
+              );
+              if (rightWingIndex !== -1)
+                scene.objects.splice(rightWingIndex, 1);
+            }
+
             scene.objects.splice(i, 1);
           }
         }
@@ -744,15 +798,54 @@ async function drawScene(currentTime = 0) {
       for (const agent of agents) {
         if (!scene.objects.includes(agent)) {
           // New car detected, set up its visual properties (simple object like initial agents)
-          agent.arrays = scene.butterfly.arrays;
-          agent.bufferInfo = scene.butterfly.bufferInfo;
-          agent.vao = scene.butterfly.vao;
+          agent.arrays = scene.butterflyBody.arrays;
+          agent.bufferInfo = scene.butterflyBody.bufferInfo;
+          agent.vao = scene.butterflyBody.vao;
           agent.scale = { x: 0.005, y: 0.005, z: 0.005 };
+          agent.position.y += 1;
           agent.color = [0, 0, 1, 1];
           agent.usesLighting = true;
           agent.isButterfly = true;
           agent.usesLighting = true;
           scene.addObject(agent);
+
+          // Create left wing for the butterfly
+          const leftWing = new Object3D(
+            `${agent.id}_left_wing`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            [0, 0, 1, 1]
+          );
+          leftWing.arrays = scene.butterflyLeftWing.arrays;
+          leftWing.bufferInfo = scene.butterflyLeftWing.bufferInfo;
+          leftWing.vao = scene.butterflyLeftWing.vao;
+          leftWing.usesLighting = true;
+          leftWing.isButterflyWing = true;
+          leftWing.isLeftWing = true;
+          leftWing.parentButterfly = agent;
+          leftWing.flapPhase = 0; // Animation phase
+          scene.addObject(leftWing);
+          agent.leftWing = leftWing;
+
+          // Create right wing for the butterfly
+          const rightWing = new Object3D(
+            `${agent.id}_right_wing`,
+            [agent.position.x, agent.position.y, agent.position.z],
+            [0, 0, 0],
+            [0.005, 0.005, 0.005],
+            [0, 0, 1, 1]
+          );
+          rightWing.arrays = scene.butterflyRightWing.arrays;
+          rightWing.bufferInfo = scene.butterflyRightWing.bufferInfo;
+          rightWing.vao = scene.butterflyRightWing.vao;
+          rightWing.usesLighting = true;
+          rightWing.isButterflyWing = true;
+          rightWing.isLeftWing = false;
+          rightWing.parentButterfly = agent;
+          rightWing.flapPhase = 0; // Animation phase
+          scene.addObject(rightWing);
+          agent.rightWing = rightWing;
 
           console.log("Added new car to scene:", agent.id);
         }

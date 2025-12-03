@@ -117,7 +117,7 @@ async function main() {
   // Prepare the user interface
   setupUI();
 
-  // Fisrt call to the drawing loop
+  // First call to the drawing loop
   drawScene();
 }
 
@@ -130,8 +130,6 @@ function setupScene() {
     [0, 0, 10],
     [0, 0, 0]
   );
-  // These values are empyrical.
-  // Maybe find a better way to determine them
   camera.panOffset = [0, 8, 0];
   scene.setCamera(camera);
   scene.camera.setupControls();
@@ -165,22 +163,28 @@ async function setupObjects(scene, gl, programInfo) {
   scene.addObject(ground);
 
   // SKYBOX - Large blue sky using skybox.obj model
-  // try {
-  //   console.log("Loading skybox model...");
-  //   const skybox = await createModelObject(gl, flatProgramInfo, "skybox.obj");
-  //   skybox.position.x = 14; // Center of 28x28 map
-  //   skybox.position.y = 0;
-  //   skybox.position.z = 14; // Center of 28x28 map
-  //   skybox.scale = { x: 3, y: 3, z: 3 }; // Model is already large
-  //   skybox.color = [0.53, 0.81, 0.92, 1.0]; // Sky blue color
-  //   skybox.usesLighting = false;
-  //   skybox.usesFlatShader = true; // Use flat shader for uniform color
-  //   skybox.isSkybox = true; // Mark as skybox for special rendering
-  //   scene.addObject(skybox);
-  //   console.log("Skybox loaded successfully!");
-  // } catch (error) {
-  //   console.error("Failed to load skybox model:", error);
-  // }
+  try {
+    console.log("Loading skybox model...");
+    const skybox = await createModelObject(gl, lightProgramInfo, "skybox.obj");
+
+    const skyboxImage = await loadImage("/assets/models/skybox.png");
+
+    skybox.texture = createTexture(gl, skyboxImage);
+
+    skybox.position.x = 14;
+    skybox.position.y = 0; // Reverted to 0
+    skybox.position.z = 14;
+
+    skybox.scale = { x: 3, y: 3, z: 3 };
+    skybox.color = [1, 1, 1, 1.0];
+    skybox.usesLighting = true; // Use lighting shader
+    skybox.isSkybox = true;
+
+    scene.addObject(skybox);
+    console.log("Skybox loaded successfully!");
+  } catch (error) {
+    console.error("Failed to load skybox model:", error);
+  }
 
   // AGENTS (Butterflies) - Using butterfly 3D model with separate wings
   try {
@@ -206,18 +210,6 @@ async function setupObjects(scene, gl, programInfo) {
     scene.butterflyBody = butterflyBodyModel;
     scene.butterflyLeftWing = butterflyLeftWingModel;
     scene.butterflyRightWing = butterflyRightWingModel;
-
-    // for (const agent of agents) {
-    //   agent.arrays = butterflyModel.arrays;
-    //   agent.bufferInfo = butterflyModel.bufferInfo;
-    //   agent.vao = butterflyModel.vao;
-    //   agent.scale = { x: 0.05, y: 0.05, z: 0.05 };
-    //   agent.position.y += 1.5;
-    //   agent.color = [1.0, 0.8, 0.2, 1.0];
-    //   agent.usesLighting = true;
-    //   agent.isButterfly = true;
-    //   scene.addObject(agent);
-    // }
   } catch (error) {
     console.error(
       "Failed to load butterfly model, falling back to cubes:",
@@ -426,7 +418,7 @@ async function setupObjects(scene, gl, programInfo) {
     }
   }
 
-  // TRAFFIC LIGHTS - Using mushroom models with state-based colors
+  // TRAFFIC LIGHTS
   try {
     console.log("Loading mushroom models for traffic lights...");
     const mushroomCapModel = await createModelObject(
@@ -513,12 +505,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   let v3_tra = object.isButterfly
     ? object.interpolatedPosArray
     : object.posArray;
-  
+
   // Apply Y offset for butterflies
   if (object.isButterfly && object.yOffset !== undefined) {
     v3_tra = [v3_tra[0], v3_tra[1] + object.yOffset, v3_tra[2]];
   }
-  
+
   let v3_sca = object.scaArray;
 
   // Calculate rotation for butterflies based on movement direction
@@ -536,10 +528,14 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   if (object.isButterflyWing && object.parentButterfly) {
     // Sync position with parent butterfly
     v3_tra = object.parentButterfly.interpolatedPosArray;
-    
+
     // Apply parent's Y offset
     if (object.parentButterfly.yOffset !== undefined) {
-      v3_tra = [v3_tra[0], v3_tra[1] + object.parentButterfly.yOffset, v3_tra[2]];
+      v3_tra = [
+        v3_tra[0],
+        v3_tra[1] + object.parentButterfly.yOffset,
+        v3_tra[2],
+      ];
     }
 
     // Match parent butterfly's direction
@@ -591,6 +587,17 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     specularLights.push(...trafficLightLights[i].specular);
   }
 
+  // --- SKYBOX LIGHTING OVERRIDE ---
+  let ambientLight = [0.3, 0.3, 0, 1.0];
+  let diffuseFactor = 1.0;
+  let specularFactor = 1.0;
+  let shininess = 32.0;
+
+  if (object.isSkybox) {
+    ambientLight = [0.8, 0.8, 0.8, 1.0];
+  }
+  // --------------------------------
+
   // Model uniforms
   let objectUniforms = {
     u_world: transforms,
@@ -598,13 +605,14 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     u_worldViewProjection: wvpMat,
     u_lightWorldPosition: lightPositions,
     u_viewWorldPosition: scene.camera.posArray,
-    u_ambientLight: [0.3, 0.3, 0, 1.0], // Increased so it's visible even with bright traffic lights
-    u_diffuseLight: diffuseLights,
-    u_specularLight: specularLights,
-    u_shininess: 32.0,
-    u_constant: 1.0,
-    u_linear: 0.5, // Increased for faster falloff
-    u_quadratic: 0.3, // Increased for much faster falloff with distance
+    u_ambientLight: ambientLight, // Increased so it's visible even with bright traffic lights
+    u_diffuseLight: diffuseLights.map((l) => l * diffuseFactor),
+    u_specularLight: specularLights.map((l) => l * specularFactor),
+    u_shininess: shininess,
+    // FIX: Use the variable attenuation values
+    u_constant: 1,
+    u_linear: 0.5,
+    u_quadratic: 0.3,
     u_color: object.color || [1, 1, 1, 1],
     u_useTexture: object.texture ? true : false,
   };
@@ -736,7 +744,6 @@ async function drawScene(currentTime = 0) {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   scene.camera.checkKeys();
-  //console.log(scene.camera);
 
   // Update traffic light colors based on their current state
   for (
@@ -925,15 +932,33 @@ function setupUI() {
     });
   spawnFolder.open();
 }
-/*
-  // Settings for the animation
-  const animFolder = gui.addFolder('Animation:');
-  animFolder.add( settings.rotationSpeed, 'x', 0, 360)
-      .decimals(2)
-  animFolder.add( settings.rotationSpeed, 'y', 0, 360)
-      .decimals(2)
-  animFolder.add( settings.rotationSpeed, 'z', 0, 360)
-      .decimals(2)
-  */
+
+// Helper to load an image asynchronously
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// Helper to create a WebGL texture from an image
+function createTexture(gl, image) {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // FIX: RESTORED Flip Y axis for OBJ textures
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+  return texture;
+}
 
 main();

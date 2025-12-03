@@ -521,15 +521,27 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   let rotYAngle = object.rotRad.y;
   let rotZAngle = object.rotRad.z;
 
+  // Use discrete direction state for butterflies
+  if (object.isButterfly && object.direction !== undefined) {
+    rotYAngle = object.direction;
+  }
+
   // Handle butterfly wing flapping animation
+  let flapRotMat = M4.identity();
   if (object.isButterflyWing && object.parentButterfly) {
     // Sync position with parent butterfly
     v3_tra = object.parentButterfly.interpolatedPosArray;
 
-    // Add flapping animation (rotate around Z axis)
+    // Match parent butterfly's direction
+    if (object.parentButterfly.direction !== undefined) {
+      rotYAngle = object.parentButterfly.direction;
+    }
+
+    // Add flapping animation in local space (before directional rotation)
     const flapRange = Math.PI / 4; // 45 degrees flapping range
     const flapAngle = Math.sin(object.flapPhase) * flapRange;
-    rotZAngle = object.isLeftWing ? flapAngle : -flapAngle;
+    // Flap around Z axis in local space (up and down motion)
+    flapRotMat = M4.rotationZ(object.isLeftWing ? flapAngle : -flapAngle);
   }
 
   // Create the individual transform matrices
@@ -540,10 +552,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   const traMat = M4.translation(v3_tra);
 
   // Create the composite matrix with all transformations
+  // For wings: apply flapping first (local space), then directional rotation (world space)
   let transforms = M4.identity();
   transforms = M4.multiply(scaMat, transforms);
+  transforms = M4.multiply(flapRotMat, transforms); // Flap
   transforms = M4.multiply(rotXMat, transforms);
-  transforms = M4.multiply(rotYMat, transforms);
+  transforms = M4.multiply(rotYMat, transforms); // Direction
   transforms = M4.multiply(rotZMat, transforms);
   transforms = M4.multiply(traMat, transforms);
 
@@ -681,6 +695,21 @@ async function drawScene(currentTime = 0) {
   const deltaProgress = deltaTime / duration;
   for (const agent of agents) {
     agent.updateInterpolation(deltaProgress);
+
+    // Update direction based on movement (discrete 90-degree rotations)
+    if (agent.oldPosition) {
+      const dx = agent.position.x - agent.oldPosition.x;
+      const dz = agent.position.z - agent.oldPosition.z;
+
+      if (Math.abs(dx) > Math.abs(dz)) {
+        // Moving primarily along X axis
+        agent.direction = dx > 0 ? Math.PI / 2 : -Math.PI / 2; // 90° or -90°
+      } else if (Math.abs(dz) > 0.01) {
+        // Moving primarily along Z axis
+        agent.direction = dz > 0 ? 0 : Math.PI; // 180° or 0°
+      }
+      // If no significant movement, keep previous direction
+    }
   }
 
   // Update wing flapping animation
@@ -807,6 +836,7 @@ async function drawScene(currentTime = 0) {
           agent.usesLighting = true;
           agent.isButterfly = true;
           agent.usesLighting = true;
+          agent.direction = 0; // Initialize direction (0° = facing forward)
           scene.addObject(agent);
 
           // Create left wing for the butterfly

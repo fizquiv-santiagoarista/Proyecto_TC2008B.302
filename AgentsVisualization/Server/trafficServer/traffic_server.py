@@ -231,7 +231,8 @@ def getCarStats():
             return jsonify({
                 'totalSpawned': stats['total_spawned'],
                 'currentActive': stats['current_active'],
-                'reachedDestination': stats['reached_destination']
+                'reachedDestination': stats['reached_destination'],
+                'totalSteps': stats['total_steps']
             })
         except Exception as e:
             print(e)

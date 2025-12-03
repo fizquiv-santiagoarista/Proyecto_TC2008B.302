@@ -34,7 +34,7 @@ class CityModel(Model):
         self.total_cars_reached_destination = 0  # Total cars that reached their destination
 
         # Load the map file. The map file is a text file where each character represents an agent.
-        with open("city_files/2022_base.txt") as baseFile:
+        with open("city_files/2025_base.txt") as baseFile:
             lines = [line.strip() for line in baseFile.readlines()] 
             self.width = len(lines[0])
             self.height = len(lines)
@@ -212,7 +212,8 @@ class CityModel(Model):
         return {
             "total_spawned": self.total_cars_spawned,
             "current_active": current_cars,
-            "reached_destination": self.total_cars_reached_destination
+            "reached_destination": self.total_cars_reached_destination,
+            "total_steps": self.steps
         }
     
     def set_spawn_interval(self, interval):

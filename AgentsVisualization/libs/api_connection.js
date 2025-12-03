@@ -22,7 +22,8 @@ const trafficLights = [];
 const carStats = {
     totalSpawned: 0,
     currentActive: 0,
-    reachedDestination: 0
+    reachedDestination: 0,
+    totalSteps: 0
 };
 
 // Define the data object
@@ -246,6 +247,7 @@ async function getCarStats() {
             carStats.totalSpawned = result.totalSpawned;
             carStats.currentActive = result.currentActive;
             carStats.reachedDestination = result.reachedDestination;
+            carStats.totalSteps = result.totalSteps;
         }
 
     } catch (error) {

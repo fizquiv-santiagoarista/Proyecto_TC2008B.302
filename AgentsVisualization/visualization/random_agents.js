@@ -344,6 +344,7 @@ function drawObject(gl, programInfo, object, viewProjectionMatrix, fract) {
 
 // Function to update the statistics display in the DOM
 function updateStatsDisplay() {
+  document.getElementById('stat-steps').textContent = carStats.totalSteps;
   document.getElementById('stat-total').textContent = carStats.totalSpawned;
   document.getElementById('stat-active').textContent = carStats.currentActive;
   document.getElementById('stat-reached').textContent = carStats.reachedDestination;

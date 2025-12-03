@@ -141,14 +141,32 @@ async function setupObjects(scene, gl, programInfo) {
   const flatCube = new Object3D(-2);
   flatCube.prepareVAO(gl, flatProgramInfo);
 
+  // Cube below the floor - Large green ground plane
+  const underground = new Object3D(-100);
+  underground.arrays = litCube.arrays;
+  underground.bufferInfo = litCube.bufferInfo;
+  underground.vao = litCube.vao;
+  underground.scale = { x: 15, y: 12, z: 15 };
+  underground.position.x = 12;
+  underground.position.z = 12;
+  underground.position.y = -15;
+
+  underground.usesLighting = true;
+  underground.isUnderground = true; // Mark as underground for special lighting
+  underground.color = [0.55, 0.27, 0.07, 1]; // Brown color
+  // const textureImage = await loadImage("/assets/models/blue.png");
+  // underground.texture = createTexture(gl, textureImage);
+  scene.addObject(underground);
+
   // FLOOR - Large green ground plane
   const ground = new Object3D(-100);
   ground.arrays = litCube.arrays;
   ground.bufferInfo = litCube.bufferInfo;
   ground.vao = litCube.vao;
-  ground.scale = { x: 15, y: 1, z: 15 };
+  ground.scale = { x: 15, y: 2, z: 15 };
   ground.position.x = 12;
   ground.position.z = 12;
+  ground.position.y = -1;
   ground.usesLighting = true;
   ground.isFloor = true; // Mark as floor for special lighting
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
@@ -546,7 +564,7 @@ async function setupObjects(scene, gl, programInfo) {
     scene.addObject(light);
 
     // Create the mushroom cap with color based on traffic light state
-    const capColor = light.state ? [0.3, 0.5, 0, 1.0] : [0.5, 0.3, 0, 1.0]; // Green or red
+    const capColor = light.state ? [0, 0.8, 0, 1.0] : [0.8, 0, 0, 1.0]; // Green or red
     const cap = new Object3D(
       `${light.id}_cap`,
       [light.position.x, 1, light.position.z],
@@ -568,8 +586,8 @@ async function setupObjects(scene, gl, programInfo) {
     const pointLight = new Light3D(
       `trafficLight_${trafficLightLights.length}`,
       [light.position.x, light.position.y + 0.5, light.position.z], // position at cap level
-      light.state ? [0.5, 0.3, 0, 1] : [0.3, 0.5, 0, 1], // diffuse - increased intensity
-      light.state ? [0.5, 0.3, 0, 1] : [0.3, 0.5, 0, 1] // specular - increased intensity
+      light.state ? [0.3, 0.5, 0, 1] : [0.5, 0.2, 0, 1], // diffuse - green when on, red when off
+      light.state ? [0.3, 0.5, 0, 1] : [0.5, 0.2, 0, 1] // specular - green when on, red when off
     );
     trafficLightLights.push(pointLight);
   }
@@ -693,6 +711,12 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     ambientLight = [0.2, 0.2, 0.2, 1.0];
     diffuseFactor = 1.2;
     specularFactor = 0.5;
+  }
+
+  if (object.isUnderground) {
+    ambientLight = [0.15, 0.1, 0.05, 1.0]; // Dark brown ambient
+    diffuseFactor = 0.5;
+    specularFactor = 0.3;
   }
   // ----------------------------------
 

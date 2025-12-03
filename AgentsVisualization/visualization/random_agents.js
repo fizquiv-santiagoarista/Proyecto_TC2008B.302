@@ -46,21 +46,7 @@ import fsLightGLSL from "../assets/shaders/fs_multi_lights.glsl?raw";
 
 const scene = new Scene3D();
 
-/*
-// Variable for the scene settings
-const settings = {
-    // Speed in degrees
-    rotationSpeed: {
-        x: 0,
-        y: 0,
-        z: 0,
-    },
-};
-*/
-
 // Global variables
-let colorProgramInfo = undefined;
-let flatProgramInfo = undefined;
 let lightProgramInfo = undefined;
 let gl = undefined;
 const duration = 1000; // ms
@@ -79,15 +65,11 @@ async function main() {
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   // Prepare the program with the shaders
-  colorProgramInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
-  flatProgramInfo = twgl.createProgramInfo(gl, [vsFlatGLSL, fsFlatGLSL]);
   lightProgramInfo = twgl.createProgramInfo(gl, [vsLightGLSL, fsLightGLSL]);
 
   // Check if shaders compiled successfully
-  if (!colorProgramInfo || !flatProgramInfo || !lightProgramInfo) {
+  if (!lightProgramInfo) {
     console.error("Failed to create shader programs");
-    console.error("colorProgramInfo:", colorProgramInfo);
-    console.error("flatProgramInfo:", flatProgramInfo);
     console.error("lightProgramInfo:", lightProgramInfo);
     return;
   }
@@ -105,7 +87,7 @@ async function main() {
   setupScene();
 
   // Position the objects in the scene
-  await setupObjects(scene, gl, colorProgramInfo);
+  await setupObjects(scene, gl);
 
   // Prepare the user interface
   setupUI();
@@ -128,18 +110,12 @@ function setupScene() {
   scene.camera.setupControls();
 }
 
-async function setupObjects(scene, gl, programInfo) {
+async function setupObjects(scene, gl) {
   // Create VAOs for the different shapes
-  const baseCube = new Object3D(-1);
-  baseCube.prepareVAO(gl, programInfo);
 
   // Create lit cube for objects affected by traffic light glow
   const litCube = new Object3D(-4);
   litCube.prepareVAO(gl, lightProgramInfo);
-
-  // Create a separate cube for flat-shaded objects (traffic lights)
-  const flatCube = new Object3D(-2);
-  flatCube.prepareVAO(gl, flatProgramInfo);
 
   // Cube below the floor - Large green ground plane
   const underground = new Object3D(-100);
@@ -151,7 +127,6 @@ async function setupObjects(scene, gl, programInfo) {
   underground.position.z = 12;
   underground.position.y = -15;
 
-  underground.usesLighting = true;
   underground.isUnderground = true; // Mark as underground for special lighting
   underground.color = [0.55, 0.27, 0.07, 1]; // Brown color
   // const textureImage = await loadImage("/assets/models/blue.png");
@@ -167,7 +142,6 @@ async function setupObjects(scene, gl, programInfo) {
   ground.position.x = 12;
   ground.position.z = 12;
   ground.position.y = -1;
-  ground.usesLighting = true;
   ground.isFloor = true; // Mark as floor for special lighting
   ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
   // const textureImage = await loadImage("/assets/models/blue.png");
@@ -215,7 +189,6 @@ async function setupObjects(scene, gl, programInfo) {
     grass.arrays = grassModel.arrays;
     grass.bufferInfo = grassModel.bufferInfo;
     grass.vao = grassModel.vao;
-    grass.usesLighting = true;
     grass.disableCulling = true; // Grass should be visible from both sides
     scene.addObject(grass);
   }
@@ -235,7 +208,6 @@ async function setupObjects(scene, gl, programInfo) {
 
     skybox.scale = { x: 8, y: 8, z: 8 };
     skybox.color = [1, 1, 1, 1.0];
-    skybox.usesLighting = true; // Use lighting shader
     skybox.isSkybox = true;
 
     scene.addObject(skybox);
@@ -250,16 +222,6 @@ async function setupObjects(scene, gl, programInfo) {
       gl,
       lightProgramInfo,
       "butteryfly/body.obj"
-    );
-    const butterflyLeftWingModel = await createModelObject(
-      gl,
-      lightProgramInfo,
-      "butteryfly/left_wing.obj"
-    );
-    const butterflyRightWingModel = await createModelObject(
-      gl,
-      lightProgramInfo,
-      "butteryfly/right_wing.obj"
     );
 
     // Load left wing components
@@ -300,8 +262,6 @@ async function setupObjects(scene, gl, programInfo) {
 
     // Store butterfly templates for later use
     scene.butterflyBody = butterflyBodyModel;
-    scene.butterflyLeftWing = butterflyLeftWingModel;
-    scene.butterflyRightWing = butterflyRightWingModel;
     scene.butterflyLeftWingBlack = butterflyLeftWingBlackModel;
     scene.butterflyLeftWingOrange = butterflyLeftWingOrangeModel;
     scene.butterflyLeftWingWhite = butterflyLeftWingWhiteModel;
@@ -365,7 +325,6 @@ async function setupObjects(scene, gl, programInfo) {
         obstacle.position.y = 1;
         obstacle.scale = { x: 0.2, y: 0.3, z: 0.2 };
         obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
-        obstacle.usesLighting = true;
         scene.addObject(obstacle);
 
         // Pick a random green shade for the leaves
@@ -383,7 +342,6 @@ async function setupObjects(scene, gl, programInfo) {
         leaves.arrays = treeLeavesModel.arrays;
         leaves.bufferInfo = treeLeavesModel.bufferInfo;
         leaves.vao = treeLeavesModel.vao;
-        leaves.usesLighting = true;
         scene.addObject(leaves);
       } else if (obstacleType === 1) {
         // Tree3 - Set up the log (brown)
@@ -393,7 +351,6 @@ async function setupObjects(scene, gl, programInfo) {
         obstacle.position.y = 1;
         obstacle.scale = { x: 1, y: 1.4, z: 1 };
         obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
-        obstacle.usesLighting = true;
         scene.addObject(obstacle);
 
         // Pick a random green shade for the leaves
@@ -411,7 +368,6 @@ async function setupObjects(scene, gl, programInfo) {
         leaves.arrays = tree3LeavesModel.arrays;
         leaves.bufferInfo = tree3LeavesModel.bufferInfo;
         leaves.vao = tree3LeavesModel.vao;
-        leaves.usesLighting = true;
         scene.addObject(leaves);
       } else {
         // Set up the rock (gray)
@@ -421,7 +377,6 @@ async function setupObjects(scene, gl, programInfo) {
         obstacle.position.y = 1;
         obstacle.scale = { x: 0.15, y: 0.2, z: 0.15 };
         obstacle.color = [0.5, 0.5, 0.5, 1.0]; // Gray color
-        obstacle.usesLighting = true;
         scene.addObject(obstacle);
       }
     }
@@ -434,7 +389,6 @@ async function setupObjects(scene, gl, programInfo) {
       obstacle.vao = litCube.vao;
       obstacle.scale = { x: 0.5, y: 0.5, z: 0.5 };
       obstacle.color = [0.7, 0.7, 0.7, 1.0];
-      obstacle.usesLighting = true; // Enable lighting
       scene.addObject(obstacle);
     }
   }
@@ -491,7 +445,6 @@ async function setupObjects(scene, gl, programInfo) {
       destination.vao = flowerStemModel.vao;
       destination.scale = { x: 0.3, y: 0.3, z: 0.3 };
       destination.color = randomGreen; // Random green shade
-      destination.usesLighting = true;
       scene.addObject(destination);
 
       // Pick a random vibrant, non-green color for the flower cap
@@ -513,7 +466,6 @@ async function setupObjects(scene, gl, programInfo) {
       cap.arrays = flowerCapModel.arrays;
       cap.bufferInfo = flowerCapModel.bufferInfo;
       cap.vao = flowerCapModel.vao;
-      cap.usesLighting = true;
       cap.disableCulling = true;
       cap.isFlowerCap = true;
 
@@ -531,7 +483,6 @@ async function setupObjects(scene, gl, programInfo) {
       destination.vao = litCube.vao;
       destination.scale = { x: 0.2, y: 0.2, z: 0.2 };
       destination.color = [0.7, 0.7, 0.7, 1.0];
-      destination.usesLighting = true; // Enable lighting
       scene.addObject(destination);
     }
   }
@@ -560,7 +511,6 @@ async function setupObjects(scene, gl, programInfo) {
     light.position.y = 1; // Set Y to 1 directly
     light.scale = { x: 1, y: 1, z: 1 };
     light.color = [1.0, 1.0, 1.0, 1.0]; // White color
-    light.usesLighting = true;
     scene.addObject(light);
 
     // Create the mushroom cap with color based on traffic light state
@@ -575,7 +525,6 @@ async function setupObjects(scene, gl, programInfo) {
     cap.arrays = mushroomCapModel.arrays;
     cap.bufferInfo = mushroomCapModel.bufferInfo;
     cap.vao = mushroomCapModel.vao;
-    cap.usesLighting = true;
     cap.color = capColor;
     scene.addObject(cap);
 
@@ -595,9 +544,6 @@ async function setupObjects(scene, gl, programInfo) {
 
 // Draw an object with lighting (traffic light glow effect)
 function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
-  if (object.disableCulling) {
-    gl.disable(gl.CULL_FACE);
-  }
   // Prepare the vector for translation and scale
   // Use interpolated position for agents to enable smooth movement
   let v3_tra = object.isButterfly
@@ -623,25 +569,20 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
 
   // Handle butterfly wing flapping animation
   let flapRotMat = M4.identity();
-  if (object.isButterflyWing && object.parentButterfly) {
+  if (object.isButterflyWing) {
     // Sync position with parent butterfly
     v3_tra = object.parentButterfly.interpolatedPosArray;
 
     // Apply parent's Y offset
-    if (object.parentButterfly.yOffset !== undefined) {
-      v3_tra = [
-        v3_tra[0],
-        v3_tra[1] + object.parentButterfly.yOffset,
-        v3_tra[2],
-      ];
-    }
+
+    v3_tra = [v3_tra[0], v3_tra[1] + object.parentButterfly.yOffset, v3_tra[2]];
 
     // Match parent butterfly's direction
     if (object.parentButterfly.direction !== undefined) {
       rotYAngle = object.parentButterfly.direction;
     }
 
-    // Add flapping animation in local space (before directional rotation)
+    // Add flapping animation before directional rotation
     const flapRange = Math.PI / 4; // 45 degrees flapping range
     const flapAngle = Math.sin(object.flapPhase) * flapRange;
     // Flap around Z axis in local space (up and down motion)
@@ -773,49 +714,6 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   twgl.drawBufferInfo(gl, object.bufferInfo);
 }
 
-// Draw an object with its corresponding transformations
-function drawObject(gl, programInfo, object, viewProjectionMatrix) {
-  // Prepare the vector for translation and scale
-  let v3_tra = object.posArray;
-  let v3_sca = object.scaArray;
-
-  // Create the individual transform matrices
-  const scaMat = M4.scale(v3_sca);
-  const rotXMat = M4.rotationX(object.rotRad.x);
-  const rotYMat = M4.rotationY(object.rotRad.y);
-  const rotZMat = M4.rotationZ(object.rotRad.z);
-  const traMat = M4.translation(v3_tra);
-
-  // Create the composite matrix with all transformations
-  let transforms = M4.identity();
-  transforms = M4.multiply(scaMat, transforms);
-  transforms = M4.multiply(rotXMat, transforms);
-  transforms = M4.multiply(rotYMat, transforms);
-  transforms = M4.multiply(rotZMat, transforms);
-  transforms = M4.multiply(traMat, transforms);
-
-  object.matrix = transforms;
-
-  // Apply the projection to the final matrix for the
-  // World-View-Projection
-  const wvpMat = M4.multiply(viewProjectionMatrix, transforms);
-
-  // Model uniforms
-  let objectUniforms = {
-    u_transforms: wvpMat,
-  };
-
-  // If object uses flat shader, also pass the color uniform
-  if (object.usesFlatShader) {
-    objectUniforms.u_color = object.color;
-  }
-
-  twgl.setUniforms(programInfo, objectUniforms);
-
-  gl.bindVertexArray(object.vao);
-  twgl.drawBufferInfo(gl, object.bufferInfo);
-}
-
 // Function to do the actual display of the objects
 async function drawScene(currentTime = 0) {
   // Compute time elapsed since last frame
@@ -891,34 +789,16 @@ async function drawScene(currentTime = 0) {
 
   const viewProjectionMatrix = setupViewProjection(gl);
 
-  // Draw objects with lighting (trees, buildings, floor) - warm global light, no attenuation
+  // Draw all objects with lighting
   if (trafficLightLights.length > 0) {
     gl.useProgram(lightProgramInfo.program);
     for (let object of scene.objects) {
-      if (object.usesLighting && !object.usesAttenuation) {
-        drawObjectWithLighting(
-          gl,
-          lightProgramInfo,
-          object,
-          viewProjectionMatrix
-        );
-      }
-    }
-
-    // Draw the objects with color shader
-    gl.useProgram(colorProgramInfo.program);
-    for (let object of scene.objects) {
-      if (!object.usesFlatShader && !object.usesLighting) {
-        drawObject(gl, colorProgramInfo, object, viewProjectionMatrix, fract);
-      }
-    }
-
-    // Draw the objects with flat shader (traffic lights and skybox)
-    gl.useProgram(flatProgramInfo.program);
-    for (let object of scene.objects) {
-      if (object.usesFlatShader) {
-        drawObject(gl, flatProgramInfo, object, viewProjectionMatrix, fract);
-      }
+      drawObjectWithLighting(
+        gl,
+        lightProgramInfo,
+        object,
+        viewProjectionMatrix
+      );
     }
 
     // Update the scene after the elapsed duration
@@ -970,9 +850,7 @@ async function drawScene(currentTime = 0) {
           agent.scale = { x: 0.005, y: 0.005, z: 0.005 };
           agent.yOffset = 1; // Add Y offset to elevate butterfly above ground
           agent.color = bodyColor;
-          agent.usesLighting = true;
           agent.isButterfly = true;
-          agent.usesLighting = true;
           agent.direction = 0; // Initialize direction (0° = facing forward)
           scene.addObject(agent);
 
@@ -992,7 +870,6 @@ async function drawScene(currentTime = 0) {
           leftWingBlack.arrays = scene.butterflyLeftWingBlack.arrays;
           leftWingBlack.bufferInfo = scene.butterflyLeftWingBlack.bufferInfo;
           leftWingBlack.vao = scene.butterflyLeftWingBlack.vao;
-          leftWingBlack.usesLighting = true;
           leftWingBlack.isButterflyWing = true;
           leftWingBlack.isLeftWing = true;
           leftWingBlack.parentButterfly = agent;
@@ -1009,7 +886,6 @@ async function drawScene(currentTime = 0) {
           leftWingOrange.arrays = scene.butterflyLeftWingOrange.arrays;
           leftWingOrange.bufferInfo = scene.butterflyLeftWingOrange.bufferInfo;
           leftWingOrange.vao = scene.butterflyLeftWingOrange.vao;
-          leftWingOrange.usesLighting = true;
           leftWingOrange.isButterflyWing = true;
           leftWingOrange.isLeftWing = true;
           leftWingOrange.parentButterfly = agent;
@@ -1026,7 +902,6 @@ async function drawScene(currentTime = 0) {
           leftWingWhite.arrays = scene.butterflyLeftWingWhite.arrays;
           leftWingWhite.bufferInfo = scene.butterflyLeftWingWhite.bufferInfo;
           leftWingWhite.vao = scene.butterflyLeftWingWhite.vao;
-          leftWingWhite.usesLighting = true;
           leftWingWhite.isButterflyWing = true;
           leftWingWhite.isLeftWing = true;
           leftWingWhite.parentButterfly = agent;
@@ -1044,7 +919,6 @@ async function drawScene(currentTime = 0) {
           rightWingBlack.arrays = scene.butterflyRightWingBlack.arrays;
           rightWingBlack.bufferInfo = scene.butterflyRightWingBlack.bufferInfo;
           rightWingBlack.vao = scene.butterflyRightWingBlack.vao;
-          rightWingBlack.usesLighting = true;
           rightWingBlack.isButterflyWing = true;
           rightWingBlack.isLeftWing = false;
           rightWingBlack.parentButterfly = agent;
@@ -1062,7 +936,6 @@ async function drawScene(currentTime = 0) {
           rightWingOrange.bufferInfo =
             scene.butterflyRightWingOrange.bufferInfo;
           rightWingOrange.vao = scene.butterflyRightWingOrange.vao;
-          rightWingOrange.usesLighting = true;
           rightWingOrange.isButterflyWing = true;
           rightWingOrange.isLeftWing = false;
           rightWingOrange.parentButterfly = agent;
@@ -1079,7 +952,6 @@ async function drawScene(currentTime = 0) {
           rightWingWhite.arrays = scene.butterflyRightWingWhite.arrays;
           rightWingWhite.bufferInfo = scene.butterflyRightWingWhite.bufferInfo;
           rightWingWhite.vao = scene.butterflyRightWingWhite.vao;
-          rightWingWhite.usesLighting = true;
           rightWingWhite.isButterflyWing = true;
           rightWingWhite.isLeftWing = false;
           rightWingWhite.parentButterfly = agent;

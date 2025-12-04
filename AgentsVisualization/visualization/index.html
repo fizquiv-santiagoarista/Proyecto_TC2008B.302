@@ -1,43 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Traffic Simulation - 3D Visualization</title>
-        <link rel="stylesheet" href="/css/styles.css">
-        <script defer type="module" src="random_agents.js"></script>
-    </head>
 
-    <body>
-        <div id='headerContainer'>
-            <div class="header-content">
-                <h1>🦋 Traffic Simulation Visualization</h1>
-                <p class="subtitle">Real-time 3D Multi-Agent System</p>
-            </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Simulation - 3D Visualization</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script defer type="module" src="random_agents.js"></script>
+</head>
+
+<body>
+    <div id='headerContainer'>
+        <div class="header-content">
+            <h1>🦋 Traffic Simulation Visualization</h1>
+            <p class="subtitle">Real-time 3D Multi-Agent System</p>
         </div>
-        <div id="stats-overlay">
-            <h2 class="stats-title">Simulation Stats</h2>
-            <div class="stat-item">
-                <span class="stat-label">Total Steps:</span>
-                <span id="stat-steps" class="stat-value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Total Spawned:</span>
-                <span id="stat-total" class="stat-value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Currently Active:</span>
-                <span id="stat-active" class="stat-value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Reached Destination:</span>
-                <span id="stat-reached" class="stat-value">0</span>
-            </div>
-            <div id="simulation-status" class="stat-item" style="display: none;">
-                <span class="stat-label">Status:</span>
-                <span class="stat-value stat-warning">STOPPED</span>
-            </div>
+    </div>
+    <div id="stats-overlay">
+        <h2 class="stats-title">Simulation Stats</h2>
+        <div class="stat-item">
+            <span class="stat-label">Total Steps:</span>
+            <span id="stat-steps" class="stat-value">0</span>
         </div>
-        <canvas id="canvas"></canvas>
-    </body>
+        <div class="stat-item">
+            <span class="stat-label">Total Spawned:</span>
+            <span id="stat-total" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Currently Active:</span>
+            <span id="stat-active" class="stat-value">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Reached Destination:</span>
+            <span id="stat-reached" class="stat-value">0</span>
+        </div>
+        <div id="simulation-status" class="stat-item" style="display: none;">
+            <span class="stat-label">Status:</span>
+            <span class="stat-value stat-warning">STOPPED</span>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <!-- Background music -->
+    <audio id="backgroundMusic" loop muted>
+        <source src="/assets/C418   Minecraft Music Slowed Down  With Rain  1 hour.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Auto-play music when page loads
+        window.addEventListener('load', () => {
+            const music = document.getElementById('backgroundMusic');
+            music.volume = 0.3; // Set volume to 30%
+
+            // Start playing muted (browsers allow this)
+            music.play();
+
+            // Unmute on first user interaction
+            const unmute = () => {
+                music.muted = false;
+                document.removeEventListener('click', unmute);
+                document.removeEventListener('keydown', unmute);
+            };
+
+            document.addEventListener('click', unmute, { once: true });
+            document.addEventListener('keydown', unmute, { once: true });
+        });
+    </script>
+</body>
+
 </html>

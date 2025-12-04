@@ -691,6 +691,11 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
     ? object.interpolatedPosArray
     : object.posArray;
 
+  // Skybox follows camera position
+  if (object.isSkybox) {
+    v3_tra = scene.camera.posArray;
+  }
+
   // Apply Y offset for butterflies
   if (object.isButterfly && object.yOffset !== undefined) {
     v3_tra = [v3_tra[0], v3_tra[1] + object.yOffset, v3_tra[2]];
@@ -869,14 +874,16 @@ function updateStatsDisplay() {
   document.getElementById("stat-active").textContent = carStats.currentActive;
   document.getElementById("stat-reached").textContent =
     carStats.reachedDestination;
-  
+
   // Show/hide simulation stopped status
   const statusElement = document.getElementById("simulation-status");
   if (carStats.simulationStopped) {
     statusElement.style.display = "flex";
     // Optional: Show browser alert once
     if (!window.simulationStoppedAlertShown) {
-      alert("SIMULATION STOPPED\n\nAll entry points are blocked. No more butterflies can spawn.\n\nThe simulation will continue running existing butterflies.");
+      alert(
+        "SIMULATION STOPPED\n\nAll entry points are blocked. No more butterflies can spawn.\n\nThe simulation will continue running existing butterflies."
+      );
       window.simulationStoppedAlertShown = true;
     }
   } else {

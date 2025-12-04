@@ -651,9 +651,9 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   if (object.isButterfly || object.isButterflyWing) {
-    ambientLight = [0.5, 0.5, 0.5, 1.0]; // Brighter ambient for butterflies
-    diffuseFactor = 0.9;
-    specularFactor = 0.8;
+    ambientLight = [1.0, 1.0, 1.0, 1.0]; // Maximum ambient light for butterflies - fully bright
+    diffuseFactor = 2.0; // Very high diffuse lighting
+    specularFactor = 1.5; // Strong specular for shine
   }
 
   if (object.isFlowerCap) {
@@ -729,6 +729,19 @@ function updateStatsDisplay() {
   document.getElementById("stat-active").textContent = carStats.currentActive;
   document.getElementById("stat-reached").textContent =
     carStats.reachedDestination;
+  
+  // Show/hide simulation stopped status
+  const statusElement = document.getElementById("simulation-status");
+  if (carStats.simulationStopped) {
+    statusElement.style.display = "flex";
+    // Optional: Show browser alert once
+    if (!window.simulationStoppedAlertShown) {
+      alert("SIMULATION STOPPED\n\nAll entry points are blocked. No more butterflies can spawn.\n\nThe simulation will continue running existing butterflies.");
+      window.simulationStoppedAlertShown = true;
+    }
+  } else {
+    statusElement.style.display = "none";
+  }
 }
 
 // Function to do the actual display of the objects

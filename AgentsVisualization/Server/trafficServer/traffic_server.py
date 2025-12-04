@@ -209,10 +209,22 @@ def updateModel():
     global currentStep, cityModel
     if request.method == 'GET':
         try:
-        # Update the model and return a message to WebGL saying that the model was updated successfully
+            # Check if simulation is stopped
+            if cityModel.simulation_stopped:
+                return jsonify({
+                    'message': 'Simulation stopped - cannot spawn more vehicles.',
+                    'currentStep': currentStep,
+                    'simulationStopped': True
+                })
+            
+            # Update the model and return a message to WebGL saying that the model was updated successfully
             cityModel.step()
             currentStep += 1
-            return jsonify({'message': f'Model updated to step {currentStep}.', 'currentStep':currentStep})
+            return jsonify({
+                'message': f'Model updated to step {currentStep}.',
+                'currentStep': currentStep,
+                'simulationStopped': cityModel.simulation_stopped
+            })
         except Exception as e:
             print(e)
             return jsonify({"message": "Error during step."}), 500
@@ -232,7 +244,9 @@ def getCarStats():
                 'totalSpawned': stats['total_spawned'],
                 'currentActive': stats['current_active'],
                 'reachedDestination': stats['reached_destination'],
-                'totalSteps': stats['total_steps']
+                'totalSteps': stats['total_steps'],
+                'simulationStopped': stats['simulation_stopped'],
+                'failedSpawnAttempts': stats['failed_spawn_attempts']
             })
         except Exception as e:
             print(e)

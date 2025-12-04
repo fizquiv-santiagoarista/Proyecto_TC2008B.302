@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>API connection</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Traffic Simulation - 3D Visualization</title>
         <link rel="stylesheet" href="/css/styles.css">
         <script defer type="module" src="random_agents.js"></script>
     </head>
 
     <body>
         <div id='headerContainer'>
-            <h1>API connection</h1>
+            <div class="header-content">
+                <h1>🦋 Traffic Simulation Visualization</h1>
+                <p class="subtitle">Real-time 3D Multi-Agent System</p>
+            </div>
         </div>
         <div id="stats-overlay">
+            <h2 class="stats-title">Simulation Stats</h2>
             <div class="stat-item">
                 <span class="stat-label">Total Steps:</span>
                 <span id="stat-steps" class="stat-value">0</span>
@@ -26,6 +32,10 @@
             <div class="stat-item">
                 <span class="stat-label">Reached Destination:</span>
                 <span id="stat-reached" class="stat-value">0</span>
+            </div>
+            <div id="simulation-status" class="stat-item" style="display: none;">
+                <span class="stat-label">Status:</span>
+                <span class="stat-value stat-warning">STOPPED</span>
             </div>
         </div>
         <canvas id="canvas"></canvas>

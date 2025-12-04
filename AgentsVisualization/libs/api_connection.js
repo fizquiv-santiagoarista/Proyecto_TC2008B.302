@@ -24,6 +24,8 @@ const carStats = {
   currentActive: 0,
   reachedDestination: 0,
   totalSteps: 0,
+  simulationStopped: false,
+  failedSpawnAttempts: 0,
 };
 
 // Define the data object
@@ -302,6 +304,13 @@ async function getCarStats() {
       carStats.currentActive = result.currentActive;
       carStats.reachedDestination = result.reachedDestination;
       carStats.totalSteps = result.totalSteps;
+      carStats.simulationStopped = result.simulationStopped || false;
+      carStats.failedSpawnAttempts = result.failedSpawnAttempts || 0;
+      
+      // Show alert if simulation stopped
+      if (carStats.simulationStopped) {
+        console.warn("⚠️ SIMULATION STOPPED - All spawn points are blocked!");
+      }
     }
   } catch (error) {
     // Log any errors that occur during the request

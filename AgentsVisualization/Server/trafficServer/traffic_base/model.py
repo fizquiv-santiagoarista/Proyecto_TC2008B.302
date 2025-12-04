@@ -32,6 +32,11 @@ class CityModel(Model):
         # Car tracking metrics
         self.total_cars_spawned = 0  # Total cars spawned since simulation start
         self.total_cars_reached_destination = 0  # Total cars that reached their destination
+        
+        # Simulation control
+        self.failed_spawn_attempts = 0  # Track consecutive failed spawn attempts
+        self.max_failed_attempts = 30  # Stop simulation after this many failed spawn cycles
+        self.simulation_stopped = False  # Flag to indicate if simulation should stop
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("city_files/2025_base.txt") as baseFile:
@@ -157,6 +162,11 @@ class CityModel(Model):
 
     def step(self):
         """Advance the model by one step."""
+        # Check if simulation should stop
+        if self.simulation_stopped:
+            self.running = False
+            return
+        
         self.agents.shuffle_do("step")
         
         # Print statistics every 50 steps
@@ -166,12 +176,15 @@ class CityModel(Model):
             print(f"Total spawned: {stats['total_spawned']}")
             print(f"Currently active: {stats['current_active']}")
             print(f"Reached destination: {stats['reached_destination']}")
+            print(f"Failed spawn attempts: {self.failed_spawn_attempts}")
             print("=" * 40 + "\n")
         
         # Spawn cars every spawn_interval steps
         if self.steps % self.spawn_interval == 0:
             if self.corner_road_cells and self.destinations:
-                # Spawn the specified number of cars
+                cars_spawned_this_cycle = 0
+                
+                # Try to spawn the specified number of cars
                 for i in range(self.cars_per_spawn):
                     # Select a corner to spawn the car (cycle through corners)
                     starting_cell = self.corner_road_cells[i % len(self.corner_road_cells)]
@@ -197,6 +210,26 @@ class CityModel(Model):
                     
                     car = Car(self, starting_cell, destination)
                     self.total_cars_spawned += 1  # Increment total cars spawned
+                    cars_spawned_this_cycle += 1
+                
+                # Check if we successfully spawned any cars this cycle
+                if cars_spawned_this_cycle == 0:
+                    # No cars spawned - all spawn points blocked
+                    self.failed_spawn_attempts += 1
+                    if self.failed_spawn_attempts >= self.max_failed_attempts:
+                        print(f"\n{'='*60}")
+                        print(f"🛑 SIMULATION STOPPED (Step {self.steps})")
+                        print(f"Reason: Cannot spawn vehicles - all entry points blocked")
+                        print(f"Failed spawn attempts: {self.failed_spawn_attempts}")
+                        print(f"Total cars spawned: {self.total_cars_spawned}")
+                        print(f"Cars reached destination: {self.total_cars_reached_destination}")
+                        print(f"Currently active cars: {self.get_current_car_count()}")
+                        print(f"{'='*60}\n")
+                        self.simulation_stopped = True
+                        self.running = False
+                else:
+                    # Successfully spawned at least one car - reset counter
+                    self.failed_spawn_attempts = 0
     
     def get_current_car_count(self):
         """Get the current number of cars in the simulation."""
@@ -213,8 +246,14 @@ class CityModel(Model):
             "total_spawned": self.total_cars_spawned,
             "current_active": current_cars,
             "reached_destination": self.total_cars_reached_destination,
-            "total_steps": self.steps
+            "total_steps": self.steps,
+            "simulation_stopped": self.simulation_stopped,
+            "failed_spawn_attempts": self.failed_spawn_attempts
         }
+    
+    def is_simulation_running(self):
+        """Check if simulation is still running."""
+        return self.running and not self.simulation_stopped
     
     def set_spawn_interval(self, interval):
         """Set the spawn interval (number of steps between spawns)."""

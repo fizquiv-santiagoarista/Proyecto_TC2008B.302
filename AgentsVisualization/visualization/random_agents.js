@@ -788,7 +788,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   if (object.isFloor) {
-    ambientLight = [0.2, 0.2, 0.2, 1.0]; // 50% ambient light for floor
+    ambientLight = [0.2, 0.2, 0.2, 1.0];
     diffuseFactor = 0.5;
     specularFactor = 0;
   }

@@ -896,7 +896,6 @@ async function drawScene(currentTime = 0) {
   // Compute time elapsed since last frame
   let deltaTime = currentTime - then;
   elapsed += deltaTime;
-  let fract = Math.min(1.0, elapsed / duration);
   then = currentTime;
 
   // Update agent interpolation every frame for smooth movement

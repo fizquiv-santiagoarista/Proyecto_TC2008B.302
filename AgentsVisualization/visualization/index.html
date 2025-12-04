@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Traffic Simulation - 3D Visualization</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦋</text></svg>">
     <link rel="stylesheet" href="/css/styles.css">
     <script defer type="module" src="random_agents.js"></script>
 </head>
@@ -42,7 +44,7 @@
     <canvas id="canvas"></canvas>
 
     <!-- Background music -->
-    <audio id="backgroundMusic" loop muted>
+    <audio id="backgroundMusic" loop>
         <source src="/assets/C418   Minecraft Music Slowed Down  With Rain  1 hour.mp3" type="audio/mpeg">
     </audio>
 
@@ -52,18 +54,16 @@
             const music = document.getElementById('backgroundMusic');
             music.volume = 0.3; // Set volume to 30%
 
-            // Start playing muted (browsers allow this)
-            music.play();
-
-            // Unmute on first user interaction
-            const unmute = () => {
+            // Play music on first user interaction
+            const playMusic = () => {
                 music.muted = false;
-                document.removeEventListener('click', unmute);
-                document.removeEventListener('keydown', unmute);
+                music.play().catch(err => console.log('Music playback failed:', err));
+                document.removeEventListener('click', playMusic);
+                document.removeEventListener('keydown', playMusic);
             };
 
-            document.addEventListener('click', unmute, { once: true });
-            document.addEventListener('keydown', unmute, { once: true });
+            document.addEventListener('click', playMusic, { once: true });
+            document.addEventListener('keydown', playMusic, { once: true });
         });
     </script>
 </body>

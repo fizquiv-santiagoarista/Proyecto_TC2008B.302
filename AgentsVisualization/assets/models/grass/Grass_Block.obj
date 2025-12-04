@@ -2,6 +2,8 @@
 # www.blender.org
 mtllib Grass_Block.mtl
 o Grass_Block_Cube
+
+# --- VERTICES (Unchanged) ---
 v 1.000000 0.000003 -1.000000
 v 1.000000 0.000003 1.000000
 v -1.000000 0.000003 1.000000
@@ -10,31 +12,94 @@ v 1.000000 2.000003 -0.999999
 v 0.999999 2.000003 1.000001
 v -1.000000 2.000003 1.000000
 v -1.000000 2.000003 -1.000000
-vt 0.666657 0.250023
-vt 0.333343 0.250023
-vt 0.333343 0.000038
-vt 0.666657 0.000038
-vt 0.666657 0.500009
-vt 0.666657 0.749994
-vt 0.333343 0.749994
-vt 0.333343 0.500009
-vt 0.000029 0.500009
-vt 0.000029 0.749994
-vt 0.333343 0.999980
-vt 0.666657 0.999980
-vt 0.999971 0.500009
-vt 0.999971 0.749994
+
+# --- NORMALS (Unchanged) ---
 vn 0.0000 -1.0000 -0.0000
 vn 0.0000 1.0000 0.0000
 vn 1.0000 0.0000 0.0000
 vn -0.0000 -0.0000 1.0000
 vn -1.0000 -0.0000 -0.0000
 vn 0.0000 0.0000 -1.0000
+
+# --- TEXTURE COORDINATES ---
+
+# 1. BOTTOM FACE (Row 2, Col 4)
+vt 0.750000 0.333333
+vt 1.000000 0.333333
+vt 1.000000 0.666667
+vt 0.750000 0.666667
+
+# 2. TOP FACE (Row 2, Col 2)
+vt 0.250000 0.333333
+vt 0.500000 0.333333
+vt 0.500000 0.666667
+vt 0.250000 0.666667
+
+# 3. RIGHT FACE (Row 2, Col 3) - ROTATED 90
+# Grass is on Left Edge (U=0.5). Dirt on Right Edge (U=0.75).
+# Front edge is V=0.33, Back edge is V=0.66.
+vt 0.750000 0.333333
+vt 0.500000 0.333333
+vt 0.500000 0.666667
+vt 0.750000 0.666667
+
+# 4. FRONT FACE (Row 1, Col 2) - UPRIGHT
+# Grass at Top (V=0.33). Dirt at Bottom (V=0.0).
+vt 0.250000 0.000000
+vt 0.500000 0.000000
+vt 0.500000 0.333333
+vt 0.250000 0.333333
+
+# 5. LEFT FACE (Row 2, Col 1) - ROTATED -90
+# Grass is on Right Edge (U=0.25). Dirt on Left Edge (U=0.0).
+# Front edge is V=0.33, Back edge is V=0.66.
+vt 0.000000 0.333333
+vt 0.250000 0.333333
+vt 0.250000 0.666667
+vt 0.000000 0.666667
+
+# 6. BACK FACE (Row 3, Col 2) - ROTATED 180 (Upside Down)
+# Grass at Bottom (V=0.66). Dirt at Top (V=1.0).
+# Right(looking from back) is U=0.25. Left is U=0.5.
+vt 0.500000 0.666667
+vt 0.250000 0.666667
+vt 0.250000 1.000000
+vt 0.500000 1.000000
+
+# --- FACES ---
 usemtl Grass_Block_TEX
 s off
-f 1/1/1 2/2/1 3/3/1 4/4/1
-f 5/5/2 8/6/2 7/7/2 6/8/2
-f 1/1/3 5/5/3 6/8/3 2/2/3
-f 2/9/4 6/8/4 7/7/4 3/10/4
-f 3/11/5 7/7/5 8/6/5 4/12/5
-f 5/5/6 1/13/6 4/14/6 8/6/6
+
+# Bottom Face
+f 4/1/1 3/2/1 2/3/1
+f 4/1/1 2/3/1 1/4/1
+
+# Top Face
+f 6/7/2 7/8/2 8/5/2
+f 6/7/2 8/5/2 5/6/2
+
+# Right Face (x=1)
+# Uses VT 9-12.
+# 2(BotFront)->9(Dirt, Front). 6(TopFront)->10(Grass, Front).
+# 5(TopBack)->11(Grass, Back). 1(BotBack)->12(Dirt, Back).
+f 2/9/3 6/10/3 5/11/3
+f 2/9/3 5/11/3 1/12/3
+
+# Front Face (z=1)
+# Uses VT 13-16. Grass is Up.
+f 3/13/4 7/16/4 6/15/4
+f 3/13/4 6/15/4 2/14/4
+
+# Left Face (x=-1)
+# Uses VT 17-20.
+# 3(BotFront)->17(Dirt, Front). 7(TopFront)->18(Grass, Front).
+# 8(TopBack)->19(Grass, Back). 4(BotBack)->20(Dirt, Back).
+f 4/20/5 8/19/5 7/18/5
+f 4/20/5 7/18/5 3/17/5
+
+# Back Face (z=-1)
+# Uses VT 21-24. Grass is Down (V=0.66).
+# 8(TopLeft/Back)->22(Grass, Left). 5(TopRight/Back)->21(Grass, Right).
+# 1(BotRight/Back)->24(Dirt, Right). 4(BotLeft/Back)->23(Dirt, Left).
+f 8/22/6 4/23/6 1/24/6
+f 8/22/6 1/24/6 5/21/6

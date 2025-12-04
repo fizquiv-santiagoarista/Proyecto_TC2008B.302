@@ -115,94 +115,99 @@ async function setupObjects(scene, gl) {
   const litCube = new Object3D(-4);
   litCube.prepareVAO(gl, lightProgramInfo);
 
-  // Cube below the floor - Large green ground plane
-  const underground = new Object3D(-100);
-  underground.arrays = litCube.arrays;
-  underground.bufferInfo = litCube.bufferInfo;
-  underground.vao = litCube.vao;
-  underground.scale = {
-    x: initData.width / 1.5,
-    y: 12,
-    z: initData.height / 1.5,
-  };
-  underground.position.x = initData.width / 1.6;
-  underground.position.z = initData.height / 1.6;
-  underground.position.y = -15;
+  // FLOOR - Grass block ground plane
+  let ground = null; // Declare outside try-catch for grass placement
+  try {
+    console.log("Loading floor grass block model...");
+    ground = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "grass/Grass_Block.obj"
+    );
 
-  underground.isUnderground = true; // Mark as underground for special lighting
-  underground.color = [0.55, 0.27, 0.07, 1]; // Brown color
-  // const textureImage = await loadImage("/assets/models/blue.png");
-  // underground.texture = createTexture(gl, textureImage);
-  scene.addObject(underground);
+    const groundTexture = await loadImage(
+      "/assets/models/grass/Grass_Block_TEX.png"
+    );
+    ground.texture = createTexture(gl, groundTexture);
 
-  // FLOOR - Large green ground plane
-  const ground = new Object3D(-100);
-  ground.arrays = litCube.arrays;
-  ground.bufferInfo = litCube.bufferInfo;
-  ground.vao = litCube.vao;
-  ground.scale = { x: initData.width / 1.5, y: 2, z: initData.height / 1.5 };
-  ground.position.x = initData.width / 1.6;
-  ground.position.z = initData.height / 1.6;
-  ground.position.y = -1;
-  ground.isFloor = true; // Mark as floor for special lighting
-  ground.color = [0.5, 0.8, 0.5, 1]; // Fallback green color
-  // const textureImage = await loadImage("/assets/models/blue.png");
-  // ground.texture = createTexture(gl, textureImage);
-  scene.addObject(ground);
+    ground.scale = {
+      x: initData.width / 1.5,
+      y: initData.width / 1.5,
+      z: initData.height / 1.5,
+    };
+    ground.position.x = initData.width / 1.6;
+    ground.position.z = initData.height / 1.6;
+    ground.position.y = -36.4;
+
+    ground.isFloor = true; // Mark as floor for special lighting
+    // ground.color = [1, 1, 1, 1]; // White to show texture properly
+    ground.disableCulling = true; // Disable face culling for grass cube
+
+    scene.addObject(ground);
+    console.log("Floor grass block loaded successfully!");
+  } catch (error) {
+    console.error("Failed to load floor grass block model:", error);
+  }
 
   // GRASS - Randomly placed grass patches across the scene
-  console.log("Loading grass model...");
-  const grassModel = await createModelObject(gl, lightProgramInfo, "grass.obj");
-
-  console.log("Grass model loaded successfully!");
-
-  // Define different shades of green for grass variation (super dark green to yellow green)
-  const grassGreenShades = [
-    [0.05, 0.2, 0.05, 1.0], // Super dark green
-    [0.1, 0.3, 0.1, 1.0], // Very dark green
-    [0.15, 0.4, 0.1, 1.0], // Dark green
-    [0.2, 0.5, 0.15, 1.0], // Medium dark green
-    [0.25, 0.6, 0.2, 1.0], // Medium green
-    [0.3, 0.65, 0.25, 1.0], // Light medium green
-    [0.4, 0.7, 0.3, 1.0], // Light green
-    [0.5, 0.75, 0.35, 1.0], // Bright green
-    [0.6, 0.8, 0.3, 1.0], // Yellow-ish green
-    [0.65, 0.75, 0.2, 1.0], // Yellow green
-  ];
-
-  const numGrassPatches = 100;
-
-  // Calculate ground bounds based on position and scale
-  const edgeMargin = 2; // Empty zone width at edges
-  const groundMinX = ground.position.x - ground.scale.x + edgeMargin;
-  const groundMaxX = ground.position.x + ground.scale.x - edgeMargin;
-  const groundMinZ = ground.position.z - ground.scale.z + edgeMargin;
-  const groundMaxZ = ground.position.z + ground.scale.z - edgeMargin;
-
-  for (let i = 0; i < numGrassPatches; i++) {
-    // Random position within the ground bounds (excluding edge margin)
-    const randomX = groundMinX + Math.random() * (groundMaxX - groundMinX);
-    const randomZ = groundMinZ + Math.random() * (groundMaxZ - groundMinZ);
-
-    // Random green shade
-    const randomGreen =
-      grassGreenShades[Math.floor(Math.random() * grassGreenShades.length)];
-
-    // Random rotation around Y axis for variety
-    const randomRotation = Math.random() * Math.PI * 2;
-
-    const grass = new Object3D(
-      `grass_${i}`,
-      [randomX, 1, randomZ],
-      [0, randomRotation, 0],
-      [1, 0.5, 1],
-      randomGreen
+  if (ground) {
+    console.log("Loading grass model...");
+    const grassModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "grass.obj"
     );
-    grass.arrays = grassModel.arrays;
-    grass.bufferInfo = grassModel.bufferInfo;
-    grass.vao = grassModel.vao;
-    grass.disableCulling = true; // Grass should be visible from both sides
-    scene.addObject(grass);
+
+    console.log("Grass model loaded successfully!");
+
+    // Define different shades of green for grass variation (super dark green to yellow green)
+    const grassGreenShades = [
+      [0.05, 0.2, 0.05, 1.0], // Super dark green
+      [0.1, 0.3, 0.1, 1.0], // Very dark green
+      [0.15, 0.4, 0.1, 1.0], // Dark green
+      [0.2, 0.5, 0.15, 1.0], // Medium dark green
+      [0.25, 0.6, 0.2, 1.0], // Medium green
+      [0.3, 0.65, 0.25, 1.0], // Light medium green
+      [0.4, 0.7, 0.3, 1.0], // Light green
+      [0.5, 0.75, 0.35, 1.0], // Bright green
+      [0.6, 0.8, 0.3, 1.0], // Yellow-ish green
+      [0.65, 0.75, 0.2, 1.0], // Yellow green
+    ];
+
+    const numGrassPatches = 200;
+
+    // Calculate ground bounds based on position and scale
+    const edgeMargin = 2; // Empty zone width at edges
+    const groundMinX = ground.position.x - ground.scale.x + edgeMargin;
+    const groundMaxX = ground.position.x + ground.scale.x - edgeMargin;
+    const groundMinZ = ground.position.z - ground.scale.z + edgeMargin;
+    const groundMaxZ = ground.position.z + ground.scale.z - edgeMargin;
+
+    for (let i = 0; i < numGrassPatches; i++) {
+      // Random position within the ground bounds (excluding edge margin)
+      const randomX = groundMinX + Math.random() * (groundMaxX - groundMinX);
+      const randomZ = groundMinZ + Math.random() * (groundMaxZ - groundMinZ);
+
+      // Random green shade
+      const randomGreen =
+        grassGreenShades[Math.floor(Math.random() * grassGreenShades.length)];
+
+      // Random rotation around Y axis for variety
+      const randomRotation = Math.random() * Math.PI * 2;
+
+      const grass = new Object3D(
+        `grass_${i}`,
+        [randomX, 1, randomZ],
+        [0, randomRotation, 0],
+        [1, 0.5, 1],
+        randomGreen
+      );
+      grass.arrays = grassModel.arrays;
+      grass.bufferInfo = grassModel.bufferInfo;
+      grass.vao = grassModel.vao;
+      grass.disableCulling = true; // Grass should be visible from both sides
+      scene.addObject(grass);
+    }
   }
 
   // SKYBOX - Large blue sky using skybox.obj model
@@ -783,7 +788,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   if (object.isFloor) {
-    // ambientLight = [0.2, 0.2, 0.2, 1.0]; // Bright ambient for floor
+    ambientLight = [0.2, 0.2, 0.2, 1.0]; // 50% ambient light for floor
     diffuseFactor = 0.5;
     specularFactor = 0;
   }

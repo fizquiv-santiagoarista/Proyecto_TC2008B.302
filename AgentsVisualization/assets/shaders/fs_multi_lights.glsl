@@ -1,16 +1,11 @@
 #version 300 es
 precision highp float;
 
-const int NUM_LIGHTS = 20;
+const int NUM_LIGHTS = 100;
 
 in vec3 v_normal;
-in vec3 v_surfaceToLight[NUM_LIGHTS];
-in vec3 v_surfaceToView;
+in vec3 v_surfaceWorldPosition;
 in vec2 v_texCoord;
-
-//uniform vec4 u_ambientColor;
-//uniform vec4 u_diffuseColor;
-//uniform vec4 u_specularColor;
 
 uniform float u_shininess;
 
@@ -21,6 +16,8 @@ uniform bool u_useTexture;
 uniform vec4 u_ambientLight;
 uniform vec4 u_diffuseLight[NUM_LIGHTS];
 uniform vec4 u_specularLight[NUM_LIGHTS];
+uniform vec3 u_lightWorldPosition[NUM_LIGHTS];
+uniform vec3 u_viewWorldPosition;
 
 out vec4 outColor;
 
@@ -32,7 +29,7 @@ void main() {
     // it for each pixel
     vec3 normal = normalize(v_normal);
 
-    vec3 surfToViewDirection = normalize(v_surfaceToView);
+    vec3 surfToViewDirection = normalize(u_viewWorldPosition - v_surfaceWorldPosition);
 
     // Compute the three parts of the Phong lighting model
     vec4 ambientColor = color * u_ambientLight;
@@ -40,12 +37,15 @@ void main() {
     vec4 specularColor = vec4(0, 0, 0, 1);
 
     for (int i=0; i<NUM_LIGHTS; i++) {
+        // Calculate surface to light vector
+        vec3 surfaceToLight = u_lightWorldPosition[i] - v_surfaceWorldPosition;
+        
         // Calculate distance squared for attenuation (optimization - avoids sqrt)
-        float distanceSquared = dot(v_surfaceToLight[i], v_surfaceToLight[i]);
+        float distanceSquared = dot(surfaceToLight, surfaceToLight);
         // Simple inverse square falloff with a small constant to avoid division by zero
         float attenuation = 1.0 / (1.0 + 0.05 * distanceSquared);
         
-        vec3 surfToLigthDirection = normalize(v_surfaceToLight[i]);
+        vec3 surfToLigthDirection = normalize(surfaceToLight);
         // Finding the reflection vector
         // https://en.wikipedia.org/wiki/Phong_reflection_model
         vec3 reflectionVector = (2.0 * dot(surfToLigthDirection, normal)

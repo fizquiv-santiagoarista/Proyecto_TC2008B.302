@@ -166,13 +166,19 @@ async function setupObjects(scene, gl) {
     [0.18, 0.58, 0.1, 1.0], // Yellow-green
   ];
 
-  const numGrassPatches = 500 + Math.floor(Math.random() * 51); // Random between 150-200
+  const numGrassPatches = 100;
+
+  // Calculate ground bounds based on position and scale
+  const edgeMargin = 2; // Empty zone width at edges
+  const groundMinX = ground.position.x - ground.scale.x + edgeMargin;
+  const groundMaxX = ground.position.x + ground.scale.x - edgeMargin;
+  const groundMinZ = ground.position.z - ground.scale.z + edgeMargin;
+  const groundMaxZ = ground.position.z + ground.scale.z - edgeMargin;
 
   for (let i = 0; i < numGrassPatches; i++) {
-    // Random position within the ground bounds
-    // Ground is at position (12, 12) with scale 15, so it spans from -3 to 27
-    const randomX = Math.random() * 25; // -3 to 27
-    const randomZ = Math.random() * 25; // -3 to 27
+    // Random position within the ground bounds (excluding edge margin)
+    const randomX = groundMinX + Math.random() * (groundMaxX - groundMinX);
+    const randomZ = groundMinZ + Math.random() * (groundMaxZ - groundMinZ);
 
     // Random green shade
     const randomGreen =

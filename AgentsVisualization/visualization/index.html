@@ -40,6 +40,10 @@
             <span class="stat-label">Status:</span>
             <span class="stat-value stat-warning">STOPPED</span>
         </div>
+        <div class="simulation-controls">
+            <button id="pause-btn" class="control-btn">⏸️ Pause</button>
+            <button id="reset-btn" class="control-btn">🔄 Reset</button>
+        </div>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -49,6 +53,24 @@
     </audio>
 
     <script>
+        // Global simulation control variables
+        window.simulationPaused = false;
+        window.pauseSimulation = function () {
+            window.simulationPaused = !window.simulationPaused;
+            const pauseBtn = document.getElementById('pause-btn');
+            if (window.simulationPaused) {
+                pauseBtn.textContent = '▶️ Resume';
+                pauseBtn.classList.add('paused');
+            } else {
+                pauseBtn.textContent = '⏸️ Pause';
+                pauseBtn.classList.remove('paused');
+            }
+        };
+
+        window.resetSimulation = function () {
+            location.reload();
+        };
+
         // Auto-play music when page loads
         window.addEventListener('load', () => {
             const music = document.getElementById('backgroundMusic');
@@ -64,6 +86,10 @@
 
             document.addEventListener('click', playMusic, { once: true });
             document.addEventListener('keydown', playMusic, { once: true });
+
+            // Setup control buttons
+            document.getElementById('pause-btn').addEventListener('click', window.pauseSimulation);
+            document.getElementById('reset-btn').addEventListener('click', window.resetSimulation);
         });
     </script>
 </body>

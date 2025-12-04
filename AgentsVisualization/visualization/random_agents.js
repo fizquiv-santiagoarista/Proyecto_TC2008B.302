@@ -895,35 +895,43 @@ function updateStatsDisplay() {
 async function drawScene(currentTime = 0) {
   // Compute time elapsed since last frame
   let deltaTime = currentTime - then;
-  elapsed += deltaTime;
+
+  // Check if simulation is paused
+  if (!window.simulationPaused) {
+    elapsed += deltaTime;
+  }
   then = currentTime;
 
   // Update agent interpolation every frame for smooth movement
   const deltaProgress = deltaTime / duration;
-  for (const agent of agents) {
-    agent.updateInterpolation(deltaProgress);
 
-    // Update direction based on movement (discrete 90-degree rotations)
-    if (agent.oldPosition) {
-      const dx = agent.position.x - agent.oldPosition.x;
-      const dz = agent.position.z - agent.oldPosition.z;
+  // Only update if not paused
+  if (!window.simulationPaused) {
+    for (const agent of agents) {
+      agent.updateInterpolation(deltaProgress);
 
-      if (Math.abs(dx) > Math.abs(dz)) {
-        // Moving primarily along X axis
-        agent.direction = dx > 0 ? Math.PI / 2 : -Math.PI / 2; // 90° or -90°
-      } else if (Math.abs(dz) > 0.01) {
-        // Moving primarily along Z axis
-        agent.direction = dz > 0 ? 0 : Math.PI; // 180° or 0°
+      // Update direction based on movement (discrete 90-degree rotations)
+      if (agent.oldPosition) {
+        const dx = agent.position.x - agent.oldPosition.x;
+        const dz = agent.position.z - agent.oldPosition.z;
+
+        if (Math.abs(dx) > Math.abs(dz)) {
+          // Moving primarily along X axis
+          agent.direction = dx > 0 ? Math.PI / 2 : -Math.PI / 2; // 90° or -90°
+        } else if (Math.abs(dz) > 0.01) {
+          // Moving primarily along Z axis
+          agent.direction = dz > 0 ? 0 : Math.PI; // 180° or 0°
+        }
+        // If no significant movement, keep previous direction
       }
-      // If no significant movement, keep previous direction
     }
-  }
 
-  // Update wing flapping animation
-  const flapSpeed = 0.01; // Speed of wing flapping
-  for (const object of scene.objects) {
-    if (object.isButterflyWing) {
-      object.flapPhase += flapSpeed * deltaTime;
+    // Update wing flapping animation
+    const flapSpeed = 0.01; // Speed of wing flapping
+    for (const object of scene.objects) {
+      if (object.isButterflyWing) {
+        object.flapPhase += flapSpeed * deltaTime;
+      }
     }
   }
 
@@ -1148,7 +1156,9 @@ async function drawScene(currentTime = 0) {
         }
       }
 
-      await update();
+      if (!window.simulationPaused) {
+        await update();
+      }
     }
 
     updateStatsDisplay(); // Update the statistics display

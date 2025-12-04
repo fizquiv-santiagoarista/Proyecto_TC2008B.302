@@ -98,9 +98,8 @@ class Car(CellAgent):
         Get cells visible to the car based on its current direction:
         - 2 cells ahead
         - 1 cell to each side (left and right)
-        - 1 cell behind
         
-        Returns a dictionary with keys: 'ahead_1', 'ahead_2', 'left', 'right', 'behind'
+        Returns a dictionary with keys: 'ahead_1', 'ahead_2', 'left', 'right'
         Each value is either a cell object or None if out of bounds.
         """
         current_pos = self.cell.coordinate
@@ -124,32 +123,28 @@ class Car(CellAgent):
                 'ahead_1': (0, 1),
                 'ahead_2': (0, 2),
                 'left': (-1, 0),
-                'right': (1, 0),
-                'behind': (0, -1)
+                'right': (1, 0)
             }
         elif direction == "Down":
             offsets = {
                 'ahead_1': (0, -1),
                 'ahead_2': (0, -2),
                 'left': (1, 0),
-                'right': (-1, 0),
-                'behind': (0, 1)
+                'right': (-1, 0)
             }
         elif direction == "Left":
             offsets = {
                 'ahead_1': (-1, 0),
                 'ahead_2': (-2, 0),
                 'left': (0, -1),
-                'right': (0, 1),
-                'behind': (1, 0)
+                'right': (0, 1)
             }
         elif direction == "Right":
             offsets = {
                 'ahead_1': (1, 0),
                 'ahead_2': (2, 0),
                 'left': (0, 1),
-                'right': (0, -1),
-                'behind': (-1, 0)
+                'right': (0, -1)
             }
         else:
             return {}

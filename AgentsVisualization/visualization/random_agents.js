@@ -156,14 +156,18 @@ async function setupObjects(scene, gl) {
 
   console.log("Grass model loaded successfully!");
 
-  // Define different shades of green for grass variation
+  // Define different shades of green for grass variation (super dark green to yellow green)
   const grassGreenShades = [
-    [0.1, 0.5, 0.1, 1.0], // Dark green
-    [0.2, 0.6, 0.15, 1.0], // Medium green
-    [0.15, 0.55, 0.12, 1.0], // Forest green
-    [0.25, 0.65, 0.2, 1.0], // Bright green
-    [0.12, 0.52, 0.18, 1.0], // Green with slight blue
-    [0.18, 0.58, 0.1, 1.0], // Yellow-green
+    [0.05, 0.2, 0.05, 1.0], // Super dark green
+    [0.1, 0.3, 0.1, 1.0], // Very dark green
+    [0.15, 0.4, 0.1, 1.0], // Dark green
+    [0.2, 0.5, 0.15, 1.0], // Medium dark green
+    [0.25, 0.6, 0.2, 1.0], // Medium green
+    [0.3, 0.65, 0.25, 1.0], // Light medium green
+    [0.4, 0.7, 0.3, 1.0], // Light green
+    [0.5, 0.75, 0.35, 1.0], // Bright green
+    [0.6, 0.8, 0.3, 1.0], // Yellow-ish green
+    [0.65, 0.75, 0.2, 1.0], // Yellow green
   ];
 
   const numGrassPatches = 100;
@@ -286,16 +290,36 @@ async function setupObjects(scene, gl) {
   // OBSTACLES (Trees and Bushes) - Using OBJ models with lighting
   try {
     console.log("Loading tree and rock models...");
-    const treeLogModel = await createModelObject(
+    // Tree1 models (with apples)
+    const tree1LogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree1/tree1_log.obj"
+    );
+    const tree1LeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree1/tree1_leaves.obj"
+    );
+    const tree1ApplesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree1/tree1_apples.obj"
+    );
+
+    // Tree2 models
+    const tree2LogModel = await createModelObject(
       gl,
       lightProgramInfo,
       "tree2/tree2_log.obj"
     );
-    const treeLeavesModel = await createModelObject(
+    const tree2LeavesModel = await createModelObject(
       gl,
       lightProgramInfo,
       "tree2/tree2_leaves.obj"
     );
+
+    // Tree3 models
     const tree3LogModel = await createModelObject(
       gl,
       lightProgramInfo,
@@ -306,85 +330,194 @@ async function setupObjects(scene, gl) {
       lightProgramInfo,
       "tree3/tree3_leaves.obj"
     );
+
+    // Tree4 models (with apples, same as tree1)
+    const tree4LogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree4/tree4_log.obj"
+    );
+    const tree4LeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree4/tree4_leaves.obj"
+    );
+    const tree4ApplesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree4/tree4_apples.obj"
+    );
+
+    // Tree5 models
+    const tree5LogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree5/tree5_log.obj"
+    );
+    const tree5LeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "tree5/tree5_leaves.obj"
+    );
+
+    // Bush models
+    const bushLogModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "bush/bush_log.obj"
+    );
+    const bushLeavesModel = await createModelObject(
+      gl,
+      lightProgramInfo,
+      "bush/bush_leaves.obj"
+    );
+
     const rockModel = await createModelObject(gl, lightProgramInfo, "rock.obj");
 
     console.log("Tree and rock models loaded successfully!");
 
-    // Define different shades of green for tree leaves (more distinct variations)
-    const greenShades = [
-      [0.05, 0.4, 0.05, 1.0], // Very dark green
-      [0.15, 0.6, 0.15, 1.0], // Medium green
-      [0.25, 0.75, 0.25, 1.0], // Bright green
-      [0.1, 0.55, 0.2, 1.0], // Forest green with more blue
-      [0.2, 0.65, 0.1, 1.0], // Yellow-green
-      [0.08, 0.5, 0.3, 1.0], // Teal-green
+    // Define apple colors for tree1 (bright red, yellow, orange)
+    const appleColors = [
+      [1.0, 0.0, 0.0, 1.0], // Bright red
+      [1.0, 1.0, 0.0, 1.0], // Bright yellow
+      [1.0, 0.5, 0.0, 1.0], // Bright orange
     ];
 
-    // For each obstacle, alternate between tree2, tree3, and rocks
+    // For each obstacle, randomly choose between tree1, tree2, tree3, tree5, bush, and rock
     for (let i = 0; i < obstacles.length; i++) {
       const obstacle = obstacles[i];
-      const obstacleType = i % 3; // 0 = tree2, 1 = tree3, 2 = rock
+      const obstacleType = Math.floor(Math.random() * 6); // Random 0-5: tree1, tree2, tree3, tree5, bush, rock
 
       if (obstacleType === 0) {
-        // Tree2 - Set up the log (brown)
-        obstacle.arrays = treeLogModel.arrays;
-        obstacle.bufferInfo = treeLogModel.bufferInfo;
-        obstacle.vao = treeLogModel.vao;
+        // Tree1 - Very dark green leaves, bright red/yellow/orange apples, dark brown log
+        obstacle.arrays = tree1LogModel.arrays;
+        obstacle.bufferInfo = tree1LogModel.bufferInfo;
+        obstacle.vao = tree1LogModel.vao;
         obstacle.position.y = 1;
-        obstacle.scale = { x: 0.2, y: 0.3, z: 0.2 };
-        obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
+        obstacle.scale = { x: 1.2, y: 1.5, z: 1.2 };
+        obstacle.color = [0.35, 0.16, 0.04, 1.0]; // Dark brown
         scene.addObject(obstacle);
 
-        // Pick a random green shade for the leaves
-        const randomGreen =
-          greenShades[Math.floor(Math.random() * greenShades.length)];
-
-        // Create the leaves
+        // Very dark green leaves
         const leaves = new Object3D(
           `${obstacle.id}_leaves`,
           [obstacle.position.x, obstacle.position.y, obstacle.position.z],
           [0, 0, 0],
           [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
-          randomGreen
+          [0.05, 0.2, 0.05, 1.0] // Very dark green
         );
-        leaves.arrays = treeLeavesModel.arrays;
-        leaves.bufferInfo = treeLeavesModel.bufferInfo;
-        leaves.vao = treeLeavesModel.vao;
+        leaves.arrays = tree1LeavesModel.arrays;
+        leaves.bufferInfo = tree1LeavesModel.bufferInfo;
+        leaves.vao = tree1LeavesModel.vao;
         scene.addObject(leaves);
+
+        // Random bright apple color
+        const randomAppleColor =
+          appleColors[Math.floor(Math.random() * appleColors.length)];
+
+        const apples = new Object3D(
+          `${obstacle.id}_apples`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
+          randomAppleColor
+        );
+        apples.arrays = tree1ApplesModel.arrays;
+        apples.bufferInfo = tree1ApplesModel.bufferInfo;
+        apples.vao = tree1ApplesModel.vao;
+        scene.addObject(apples);
       } else if (obstacleType === 1) {
-        // Tree3 - Set up the log (brown)
+        // Tree2 - Yellow green leaves, very light brown log (#80471C)
+        obstacle.arrays = tree2LogModel.arrays;
+        obstacle.bufferInfo = tree2LogModel.bufferInfo;
+        obstacle.vao = tree2LogModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 0.2, y: 0.3, z: 0.2 };
+        obstacle.color = [0.5, 0.28, 0.11, 1.0]; // #80471C (very light brown)
+        scene.addObject(obstacle);
+
+        const leaves = new Object3D(
+          `${obstacle.id}_leaves`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
+          [0.6, 0.7, 0.2, 1.0] // Yellow green
+        );
+        leaves.arrays = tree2LeavesModel.arrays;
+        leaves.bufferInfo = tree2LeavesModel.bufferInfo;
+        leaves.vao = tree2LeavesModel.vao;
+        scene.addObject(leaves);
+      } else if (obstacleType === 2) {
+        // Tree3 - Green blue leaves, cinnamon brown log
         obstacle.arrays = tree3LogModel.arrays;
         obstacle.bufferInfo = tree3LogModel.bufferInfo;
         obstacle.vao = tree3LogModel.vao;
         obstacle.position.y = 1;
         obstacle.scale = { x: 1, y: 1.4, z: 1 };
-        obstacle.color = [0.55, 0.27, 0.07, 1.0]; // Brown color
+        obstacle.color = [0.52, 0.26, 0.12, 1.0]; // Cinnamon brown
         scene.addObject(obstacle);
 
-        // Pick a random green shade for the leaves
-        const randomGreen =
-          greenShades[Math.floor(Math.random() * greenShades.length)];
-
-        // Create the leaves
         const leaves = new Object3D(
           `${obstacle.id}_leaves`,
           [obstacle.position.x, obstacle.position.y, obstacle.position.z],
           [0, 0, 0],
           [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
-          randomGreen
+          [0.03, 0.6, 0.4, 1.0] // Green blue
         );
         leaves.arrays = tree3LeavesModel.arrays;
         leaves.bufferInfo = tree3LeavesModel.bufferInfo;
         leaves.vao = tree3LeavesModel.vao;
         scene.addObject(leaves);
-      } else {
-        // Set up the rock (gray)
+      } else if (obstacleType === 3) {
+        // Tree5 - Bright pink leaves, very very light brown log
+        obstacle.arrays = tree5LogModel.arrays;
+        obstacle.bufferInfo = tree5LogModel.bufferInfo;
+        obstacle.vao = tree5LogModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 1, y: 1.2, z: 1 };
+        obstacle.color = [0.7, 0.5, 0.35, 1.0]; // Very very light brown
+        scene.addObject(obstacle);
+
+        const leaves = new Object3D(
+          `${obstacle.id}_leaves`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
+          [1.0, 0.4, 0.5, 1.0] // Bright pink
+        );
+        leaves.arrays = tree5LeavesModel.arrays;
+        leaves.bufferInfo = tree5LeavesModel.bufferInfo;
+        leaves.vao = tree5LeavesModel.vao;
+        scene.addObject(leaves);
+      } else if (obstacleType === 4) {
+        // Bush - Very dark green leaves, very dark brown log
+        obstacle.arrays = bushLogModel.arrays;
+        obstacle.bufferInfo = bushLogModel.bufferInfo;
+        obstacle.vao = bushLogModel.vao;
+        obstacle.position.y = 1;
+        obstacle.scale = { x: 1.3, y: 1.3, z: 1.3 };
+        obstacle.color = [0.2, 0.1, 0.05, 1.0]; // Very dark brown
+        scene.addObject(obstacle);
+
+        const leaves = new Object3D(
+          `${obstacle.id}_leaves`,
+          [obstacle.position.x, obstacle.position.y, obstacle.position.z],
+          [0, 0, 0],
+          [obstacle.scale.x, obstacle.scale.y, obstacle.scale.z],
+          [0.05, 0.2, 0.05, 1.0] // Very dark green
+        );
+        leaves.arrays = bushLeavesModel.arrays;
+        leaves.bufferInfo = bushLeavesModel.bufferInfo;
+        leaves.vao = bushLeavesModel.vao;
+        scene.addObject(leaves);
+      } else if (obstacleType === 5) {
+        // Rock (gray)
         obstacle.arrays = rockModel.arrays;
         obstacle.bufferInfo = rockModel.bufferInfo;
         obstacle.vao = rockModel.vao;
         obstacle.position.y = 1;
-        obstacle.scale = { x: 0.15, y: 0.2, z: 0.15 };
-        obstacle.color = [0.5, 0.5, 0.5, 1.0]; // Gray color
+        obstacle.scale = { x: 0.3, y: 0.3, z: 0.3 };
+        obstacle.color = [0.5, 0.5, 0.5, 1.0]; // Gray
         scene.addObject(obstacle);
       }
     }
@@ -635,7 +768,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   // --- CUSTOM LIGHTING OVERRIDES ---
-  let ambientLight = [0.1, 0.1, 0, 1.0];
+  let ambientLight = [0.1, 0.1, 0.1, 1.0];
   let diffuseFactor = 1.0;
   let specularFactor = 1.0;
   let shininess = 32.0;
@@ -646,8 +779,8 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
 
   if (object.isFloor) {
     // ambientLight = [0.2, 0.2, 0.2, 1.0]; // Bright ambient for floor
-    diffuseFactor = 0.7;
-    specularFactor = 0.7;
+    diffuseFactor = 0.5;
+    specularFactor = 0;
   }
 
   if (object.isButterfly || object.isButterflyWing) {
@@ -657,7 +790,7 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   }
 
   if (object.isFlowerCap) {
-    ambientLight = [0.2, 0.2, 0.2, 1.0];
+    ambientLight = [0.15, 0.15, 0.15, 1.0];
     diffuseFactor = 1.2;
     specularFactor = 0.5;
   }
@@ -689,6 +822,13 @@ function drawObjectWithLighting(gl, programInfo, object, viewProjectionMatrix) {
   };
 
   twgl.setUniforms(programInfo, objectUniforms);
+
+  // Handle culling - disable for objects that need to be visible from both sides
+  if (object.disableCulling) {
+    gl.disable(gl.CULL_FACE);
+  } else {
+    gl.enable(gl.CULL_FACE);
+  }
 
   // Handle textures
   if (object.texture) {
@@ -803,11 +943,11 @@ async function drawScene(currentTime = 0) {
   ) {
     const light = trafficLights[i];
     trafficLightLights[i].diffuse = light.state
-      ? [0.3, 0.5, 0, 1] // Green specular
-      : [0.5, 0.2, 0, 1]; // Red specular
+      ? [0.3, 0.6, 0.3, 1] // Green specular
+      : [0.6, 0.3, 0.3, 1]; // Red specular
     trafficLightLights[i].specular = light.state
-      ? [0.3, 0.5, 0, 1] // Green specular
-      : [0.5, 0.2, 0, 1]; // Red specular
+      ? [0.3, 0.6, 0.3, 1] // Green specular
+      : [0.6, 0.3, 0.3, 1]; // Red specular
 
     // Update mushroom cap color to match traffic light state
     if (light.mushroomCap) {
